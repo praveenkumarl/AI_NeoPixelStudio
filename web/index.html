@@ -1,0 +1,2467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>NeoPixel Studio</title>
+<style>
+/* ==========================================================================
+   NeoPixel Studio — dark control surface
+   ========================================================================== */
+:root{
+  --bg:#0b0d12; --bg2:#11141b; --panel:#151923; --panel2:#1b2030;
+  --line:#252b3a; --line2:#323a4d;
+  --tx:#e7ecf5; --tx2:#9aa4bb; --tx3:#6b768f;
+  --acc:#4ade80; --acc2:#22d3ee; --warn:#fbbf24; --bad:#f87171; --mag:#c084fc;
+  --r:12px; --r2:8px;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(74,222,128,.07), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(34,211,238,.07), transparent 55%),
+    var(--bg);
+  color:var(--tx);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:90px;
+}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--acc2)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1500px;margin:0 auto;padding:18px 18px 0}
+header.top{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:14px 16px;margin-bottom:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0));
+  border:1px solid var(--line);border-radius:var(--r);
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:210px}
+.logo{
+  width:38px;height:38px;border-radius:10px;flex:none;
+  background:conic-gradient(from 210deg,#ff3b3b,#ffb703,#4ade80,#22d3ee,#818cf8,#e879f9,#ff3b3b);
+  box-shadow:0 0 22px rgba(129,140,248,.35);
+  position:relative;
+}
+.logo::after{content:"";position:absolute;inset:9px;border-radius:5px;background:#0b0d12}
+.brand h1{font-size:16px}
+.brand small{color:var(--tx3);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase}
+
+.link{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+  background:var(--panel2);border:1px solid var(--line);font-size:12.5px;color:var(--tx2);
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bad);box-shadow:0 0 8px currentColor;flex:none}
+.dot.on{background:var(--acc)}
+.dot.wait{background:var(--warn)}
+code.ip{font-family:var(--mono);color:var(--tx);font-size:12.5px}
+
+/* ---------- generic controls ---------- */
+.btn{
+  background:var(--panel2);border:1px solid var(--line2);color:var(--tx);
+  padding:7px 13px;border-radius:9px;font-size:13px;transition:.14s;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+}
+.btn:hover{background:#232a3d;border-color:#3d4761}
+.btn:active{transform:translateY(1px)}
+.btn.pri{background:linear-gradient(180deg,#34d399,#16a34a);border-color:#22c55e;color:#04170c;font-weight:650}
+.btn.pri:hover{background:linear-gradient(180deg,#4ade80,#22c55e)}
+.btn.cy{background:linear-gradient(180deg,#38bdf8,#0284c7);border-color:#0ea5e9;color:#03151f;font-weight:650}
+.btn.mag{background:linear-gradient(180deg,#d8b4fe,#a855f7);border-color:#c084fc;color:#1a0530;font-weight:650}
+.btn.danger{border-color:#7f1d1d;color:#fca5a5}
+.btn.danger:hover{background:#2a1417}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn.icon{padding:5px 8px;font-size:12px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.on{background:linear-gradient(180deg,#34d399,#16a34a);border-color:#22c55e;color:#04170c}
+
+input[type=range]{
+  -webkit-appearance:none;appearance:none;height:22px;background:transparent;width:100%;
+}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:#2a3245}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;margin-top:-6px;
+  background:linear-gradient(180deg,#e2e8f5,#9fb0cc);border:1px solid #0b0d12;
+  box-shadow:0 0 0 3px rgba(74,222,128,.14);
+}
+input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:#2a3245}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:50%;background:#cfd8ea}
+
+input[type=color]{
+  -webkit-appearance:none;appearance:none;border:1px solid var(--line2);
+  width:100%;height:34px;padding:2px;border-radius:8px;background:var(--panel2);cursor:pointer;
+}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:none;border-radius:6px}
+input[type=number],input[type=text],select{
+  background:var(--bg2);border:1px solid var(--line2);border-radius:8px;
+  padding:6px 8px;width:100%;font-size:13px;
+}
+input:focus,select:focus{outline:2px solid rgba(74,222,128,.35);outline-offset:0}
+label.f{display:block;font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px}
+.row{display:flex;gap:10px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mono{font-family:var(--mono)}
+.val{font-family:var(--mono);font-size:12px;color:var(--tx2);min-width:46px;text-align:right}
+
+/* ---------- cards ---------- */
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0)) ,var(--panel);
+  border:1px solid var(--line);border-radius:var(--r);
+}
+.card>.hd{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;
+  border-bottom:1px solid var(--line);flex-wrap:wrap;
+}
+.card>.hd h2{font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:var(--tx2)}
+.card>.bd{padding:14px}
+.tag{
+  font-size:10.5px;padding:2px 7px;border-radius:999px;background:#232a3d;
+  color:var(--tx2);border:1px solid var(--line2);text-transform:uppercase;letter-spacing:.05em;
+}
+.tag.g{background:rgba(74,222,128,.14);color:#86efac;border-color:rgba(74,222,128,.3)}
+.tag.c{background:rgba(34,211,238,.14);color:#67e8f9;border-color:rgba(34,211,238,.3)}
+.tag.m{background:rgba(192,132,252,.14);color:#d8b4fe;border-color:rgba(192,132,252,.3)}
+
+/* ---------- stage / preview ---------- */
+.stage{padding:16px 14px 12px;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+.stage::before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(60% 120% at 50% 0%,rgba(74,222,128,.06),transparent 70%);
+  pointer-events:none;
+}
+.stripWrap{
+  background:#07090d;border:1px solid var(--line);border-radius:14px;
+  padding:16px 14px;position:relative;
+  box-shadow:inset 0 0 40px rgba(0,0,0,.7);
+}
+.strip{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:nowrap;overflow-x:auto;padding:4px 2px}
+.led{
+  width:38px;height:38px;border-radius:50%;flex:none;position:relative;
+  background:#0d1017;border:1px solid #262d3d;cursor:pointer;
+  transition:transform .1s, box-shadow .06s linear;
+}
+.led:hover{transform:translateY(-2px)}
+.led.sel{outline:2px solid var(--acc);outline-offset:2px}
+.led.linkedsrc::after{
+  content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;
+  border-radius:50%;background:#fff;opacity:.85;box-shadow:0 0 6px #fff;
+}
+.led .idx{
+  position:absolute;left:0;right:0;bottom:-17px;text-align:center;
+  font:10.5px/1 var(--mono);color:var(--tx3);
+}
+.stripCol{width:22px;height:22px;border-radius:5px;border:1px solid var(--line2);flex:none}
+.wire{display:flex;align-items:center;gap:8px;margin-top:26px;color:var(--tx3);font-size:11.5px}
+.playhead{
+  height:3px;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2));
+  margin-top:8px;position:relative;
+}
+.playhead span{position:absolute;top:-3px;width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
+
+/* ---------- timeline ---------- */
+.tl{display:flex;gap:5px;overflow-x:auto;padding:6px 2px 8px;min-height:70px}
+.tlStep{
+  flex:none;width:82px;border:1px solid var(--line2);border-radius:9px;background:var(--panel2);
+  padding:6px;cursor:pointer;position:relative;transition:.14s;
+}
+.tlStep:hover{border-color:#48536e}
+.tlStep.cur{border-color:var(--acc);box-shadow:0 0 0 2px rgba(74,222,128,.2)}
+.tlStep .mini{display:flex;gap:2px;height:16px;margin-bottom:5px}
+.tlStep .mini i{flex:1;border-radius:2px;display:block}
+.tlStep .ms{font:10.5px/1 var(--mono);color:var(--tx2);display:flex;justify-content:space-between}
+.tlStep .n{position:absolute;top:-7px;left:-6px;background:#0b0d12;border:1px solid var(--line2);
+  border-radius:5px;font:9.5px/1 var(--mono);padding:2px 4px;color:var(--tx3)}
+.tlAdd{
+  flex:none;width:52px;border:1px dashed var(--line2);border-radius:9px;background:transparent;
+  color:var(--tx3);font-size:20px;display:flex;align-items:center;justify-content:center;
+}
+.tlAdd:hover{border-color:var(--acc);color:var(--acc)}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:4px;padding:10px 14px 0;flex-wrap:wrap}
+.tab{
+  background:transparent;border:1px solid transparent;border-bottom:2px solid transparent;
+  padding:7px 13px;border-radius:8px 8px 0 0;color:var(--tx3);font-size:13px;
+}
+.tab:hover{color:var(--tx);background:rgba(255,255,255,.03)}
+.tab.on{color:var(--tx);background:var(--panel2);border-color:var(--line);border-bottom-color:var(--acc)}
+.panes{padding:14px}
+.pane{display:none}
+.pane.on{display:block}
+
+/* ---------- layers ---------- */
+.layer{
+  display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:start;
+  padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);margin-bottom:9px;
+}
+.layer.sel{border-color:var(--acc);box-shadow:0 0 0 1px rgba(74,222,128,.25)}
+.layer .grip{
+  width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  background:#0f131c;border:1px solid var(--line);color:var(--acc);font:12px/1 var(--mono);
+}
+.layer .body{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px;align-items:end}
+.layer .acts{display:flex;gap:5px;flex-direction:column}
+.ched{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+.chip{
+  border:1px solid var(--line2);background:#0f131c;border-radius:999px;padding:3px 9px;
+  font-size:11.5px;color:var(--tx2);
+}
+.chip:hover{border-color:var(--acc);color:var(--tx)}
+.chip.on{background:rgba(74,222,128,.14);border-color:rgba(74,222,128,.4);color:#86efac}
+
+/* ---------- pixel grid ---------- */
+.pxgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+.px{
+  border:1px solid var(--line);border-radius:9px;background:var(--panel2);padding:7px 6px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+}
+.px.sel{border-color:var(--acc);box-shadow:0 0 0 1px rgba(74,222,128,.3)}
+.px .sw{width:100%;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.12)}
+.px .lbl{font:10.5px/1 var(--mono);color:var(--tx3)}
+.px input[type=color]{height:26px}
+
+/* ---------- palette ---------- */
+.pal{display:flex;gap:6px;flex-wrap:wrap}
+.sw{
+  width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.16);cursor:pointer;
+  position:relative;
+}
+.sw:hover{transform:translateY(-2px)}
+.sw.add{background:#0f131c;color:var(--tx3);display:flex;align-items:center;justify-content:center;font-size:15px}
+
+/* ---------- map / monitor ---------- */
+table.map{width:100%;border-collapse:collapse;font-size:12.5px}
+table.map th,table.map td{padding:5px 7px;text-align:left;border-bottom:1px solid var(--line)}
+table.map th{color:var(--tx3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.mon{
+  background:#07090d;border:1px solid var(--line);border-radius:9px;
+  font:11.5px/1.55 var(--mono);padding:9px;height:190px;overflow:auto;color:var(--tx2);
+}
+.mon .in{color:#67e8f9}
+.mon .out{color:#86efac}
+.mon .er{color:#fca5a5}
+.mon .sy{color:var(--tx3)}
+.bar{height:6px;border-radius:4px;background:#2a3245;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+
+/* ---------- footer bar ---------- */
+footer.bar{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  background:rgba(11,13,18,.9);backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);
+  padding:10px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+}
+footer.bar .stat{font-size:11.5px;color:var(--tx3);font-family:var(--mono)}
+.hint{color:var(--tx3);font-size:12px}
+.warnbox{
+  border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.08);
+  color:#fde68a;border-radius:9px;padding:9px 11px;font-size:12.5px;margin-bottom:10px;
+}
+.okbox{border:1px solid rgba(74,222,128,.3);background:rgba(74,222,128,.08);color:#bbf7d0;
+  border-radius:9px;padding:9px 11px;font-size:12.5px;margin-bottom:10px}
+kbd{
+  background:#0f131c;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;
+  padding:1px 5px;font:11px var(--mono);color:var(--tx2);
+}
+/* ---------- layer stack rows ---------- */
+.lrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);margin-bottom:7px;cursor:pointer;transition:.14s}
+.lrow:hover{border-color:#48536e}
+.lrow.sel{border-color:var(--acc);box-shadow:0 0 0 1px rgba(74,222,128,.25)}
+.lrow .grip{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#0f131c;border:1px solid var(--line);color:var(--acc);font:12px/1 var(--mono);flex:none}
+.lrow .lname{flex:1;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .lacts{display:flex;gap:5px;flex:none}
+
+/* ---------- simple / advanced mode ---------- */
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden;flex:none}
+.seg button{background:transparent;border:none;color:var(--tx3);padding:7px 14px;font-size:13px;font-weight:600}
+.seg button.on{background:var(--panel2);color:var(--tx)}
+.fxgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.fxbtn{
+  display:flex;align-items:center;gap:9px;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:12px;
+  padding:14px 12px;font-size:14.5px;font-weight:650;color:var(--tx);transition:.14s;
+}
+.fxbtn:hover{background:#232a3d;border-color:#3d4761;transform:translateY(-1px)}
+.fxbtn:active{transform:translateY(1px)}
+.fxbtn i{width:13px;height:13px;border-radius:50%;flex:none;box-shadow:0 0 9px currentColor}
+body.simple #editorCard,body.simple #timelineBd,body.simple #btnStream,body.simple footer.bar .adv{display:none}
+#simpleCard{display:none}
+body.simple #simpleCard{display:block}
+
+/* ---------- AI chat (Simple mode) ---------- */
+#aiCard{display:none}
+body.simple #aiCard{display:block}
+.aiLog{display:flex;flex-direction:column;gap:10px;max-height:340px;overflow-y:auto;padding:2px}
+.msg{max-width:92%;padding:9px 12px;border-radius:12px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.msg.user{align-self:flex-end;background:linear-gradient(180deg,#1d3a2b,#16301f);border:1px solid rgba(74,222,128,.35)}
+.msg.ai{align-self:flex-start;background:var(--panel2);border:1px solid var(--line)}
+.msg.err{align-self:flex-start;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.4);color:#fca5a5}
+.msg .applied{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.applied .tag{cursor:default}
+.aiRow{display:flex;gap:8px;margin-top:12px}
+.aiRow input{flex:1}
+.aiRow button{flex:none}
+.typing{display:inline-flex;gap:4px;align-items:center;padding:4px 2px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--tx3);animation:aiBlink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}
+.typing i:nth-child(3){animation-delay:.4s}
+@keyframes aiBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.aiExamples{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.aiExamples .chip{font-size:12px}
+.modal{position:fixed;inset:0;background:rgba(5,8,14,.72);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal.on{display:flex}
+.modal .box{background:var(--panel);border:1px solid var(--line2);border-radius:var(--r);box-shadow:var(--shadow);width:min(560px,100%);max-height:88vh;overflow-y:auto;padding:18px}
+.modal input[type=password],.modal input[type=text]{width:100%}
+@media (max-width:760px){
+  .pxgrid{grid-template-columns:repeat(4,1fr)}
+  .led{width:30px;height:30px}
+  .brand{min-width:0}
+  .wrap{padding:12px 10px 0}
+  header.top{padding:10px 12px;gap:10px}
+  .link{width:100%;margin-left:0;justify-content:flex-start}
+  .pill{font-size:11.5px;padding:5px 9px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .card>.hd{padding:10px 12px}
+  .card>.bd{padding:12px}
+  .panes{padding:12px}
+  .tabs{padding:8px 12px 0}
+  .tab{padding:6px 10px;font-size:12.5px}
+  .stage{padding:12px 10px 10px}
+  .btn.sm{padding:8px 13px;font-size:13px}
+  .chip{padding:6px 12px;font-size:12.5px}
+  .fxbtn{padding:13px 10px;font-size:14px}
+  .mon{height:150px}
+  footer.bar{padding:8px 10px}
+  footer.bar .btn{padding:8px 12px;font-size:12.5px}
+  footer.bar .stat{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body{padding-bottom:132px}
+}
+@media (max-width:430px){
+  .fxgrid{grid-template-columns:repeat(2,1fr)}
+  .led{width:26px;height:26px}
+  .brand h1{font-size:14px}
+  .brand small{font-size:10px}
+  .seg button{padding:7px 10px;font-size:12px}
+  .lrow{flex-wrap:wrap}
+  .lrow .lname{flex:1 1 100%;order:3}
+}
+@media (pointer:coarse){
+  button,.chip,.fxbtn,.tab{touch-action:manipulation}
+  input[type=number],input[type=text],select{font-size:16px}
+  .led{width:34px;height:34px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>NeoPixel Studio</h1>
+        <small>ESP8266 &middot; 16 px &middot; live preview</small>
+      </div>
+    </div>
+
+    <div class="link">
+      <span class="pill"><span class="dot" id="connDot"></span><span id="connTx">offline</span></span>
+      <span class="pill">device <code class="ip" id="devIp">&mdash;</code></span>
+      <span class="pill">heap <span class="mono" id="devHeap">&mdash;</span></span>
+      <span class="pill">tx <span class="mono" id="txCount">0</span></span>
+      <div class="seg" id="modeSeg" title="Simple mode: big buttons for kids. Advanced: full editor."><button id="btnSimple">Simple</button><button id="btnAdv">Advanced</button></div>
+      <button class="btn" id="btnConnect">Connect</button>
+    </div>
+  </header>
+
+  <!-- ======================= PREVIEW ======================= -->
+  <section class="card" style="margin-bottom:16px">
+    <div class="hd">
+      <h2>Live preview</h2>
+      <span class="tag g" id="prevMode">idle</span>
+      <span class="tag" id="prevClock">0.00 s</span>
+      <span class="tag c" id="prevFps">25 fps</span>
+      <div class="spread" style="margin-left:auto;gap:8px">
+        <button class="btn pri sm" id="btnPlay">Play</button>
+        <button class="btn sm" id="btnPause">Pause</button>
+        <button class="btn sm" id="btnStop">Stop</button>
+        <button class="btn cy sm" id="btnStream" title="Stream computed frames to the device as they play">Stream to device</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stripWrap">
+        <div class="strip" id="strip"></div>
+        <div class="wire">
+          <span>data&rarr;GPIO<span class="mono" id="pinOut">4</span></span>
+          <span class="stripCol" id="srcSwatch" title="colour under the playhead"></span>
+          <span id="srcTx" class="mono">#000000</span>
+          <span style="margin-left:auto" id="frameInfo">frame 0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bd" id="timelineBd" style="padding-top:0">
+      <div class="spread" style="margin:10px 0 4px">
+        <label class="f" style="margin:0">Timeline <span class="hint" id="tlInfo"></span></label>
+        <div class="row">
+          <button class="btn sm" id="btnSnap">Snapshot frame</button>
+          <button class="btn sm" id="btnTlClear">Clear</button>
+          <button class="btn sm" id="btnTlSend">Send show</button>
+        </div>
+      </div>
+      <div class="tl" id="timeline"></div>
+      <div class="playhead" id="playhead"><span style="left:0"></span></div>
+    </div>
+  </section>
+
+  <!-- ==================== SIMPLE MODE ==================== -->
+  <section class="card" id="simpleCard" style="margin-bottom:16px">
+    <div class="hd">
+      <h2>Pick a light show</h2>
+      <div class="spread" style="margin-left:auto;gap:10px;align-items:center">
+        <label class="f" style="margin:0">Colour</label>
+        <input type="color" id="simColor" value="#ff8800" style="width:56px;height:30px;padding:1px">
+      </div>
+    </div>
+    <div class="bd">
+      <div class="fxgrid" id="fxBtns"></div>
+      <div class="grid3" style="margin-top:14px">
+        <div>
+          <label class="f">Brightness <span class="val" id="vSimBright">60</span></label>
+          <input type="range" id="rSimBright" min="0" max="255" value="60">
+        </div>
+        <div>
+          <label class="f">Speed <span class="val" id="vSimSpd">1.0&times;</span></label>
+          <input type="range" id="rSimSpd" min="1" max="40" value="10">
+        </div>
+        <div>
+          <label class="f">Quick actions</label>
+          <div class="row">
+            <button class="btn sm" id="btnSimWhite">All white</button>
+            <button class="btn sm" id="btnSimOff">Lights off</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== AI CHAT (Simple mode) ==================== -->
+  <section class="card" id="aiCard" style="margin-bottom:16px">
+    <div class="hd">
+      <h2>Ask the AI</h2>
+      <span class="tag" id="aiProvTag">not configured</span>
+      <div class="spread" style="margin-left:auto;gap:8px">
+        <button class="btn sm" id="btnAiSettings" title="Choose provider, model and API key">AI settings</button>
+        <button class="btn sm" id="btnAiClear">Clear chat</button>
+      </div>
+    </div>
+    <div class="bd">
+      <div class="aiLog" id="aiLog"></div>
+      <div class="aiExamples" id="aiExamples"></div>
+      <div class="aiRow">
+        <input type="text" id="aiInput" placeholder='Describe the show, e.g. "light 1st 8 leds in red, next 8 in blue"'>
+        <button class="btn pri" id="btnAiSend">Send</button>
+      </div>
+      <p class="hint" style="margin-top:8px">
+        The AI turns plain English into the effect stack and plays it right away - on the preview and,
+        when connected, on the strip. Pick a provider under <b>AI settings</b> (DeepInfra, OpenAI, Claude,
+        Gemini, Groq, OpenRouter, local Ollama and many more). Your key is stored only in this browser;
+        requests go straight from here to the provider.
+      </p>
+    </div>
+  </section>
+
+  <!-- ==================== AI SETTINGS MODAL ==================== -->
+  <div class="modal" id="aiModal">
+    <div class="box">
+      <div class="spread" style="margin-bottom:12px">
+        <h3>AI settings</h3>
+        <button class="btn sm" id="btnAiClose">Close</button>
+      </div>
+      <div class="grid2">
+        <div>
+          <label class="f">Provider</label>
+          <select id="aiProvider"></select>
+        </div>
+        <div>
+          <label class="f">Model</label>
+          <div class="row">
+            <input type="text" id="aiModel" list="aiModelList" style="flex:1">
+            <datalist id="aiModelList"></datalist>
+            <button class="btn sm" id="btnAiModels" title="Fetch the model list from the provider">Load</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label class="f">API key <span class="hint" style="text-transform:none;letter-spacing:0">(stays in this browser)</span></label>
+        <input type="password" id="aiKey" autocomplete="off" placeholder="paste the provider API key">
+      </div>
+      <div style="margin-top:12px">
+        <label class="f">Base URL <span class="hint" style="text-transform:none;letter-spacing:0">(editable; presets fill it in)</span></label>
+        <input type="text" id="aiBaseUrl" autocomplete="off" spellcheck="false">
+      </div>
+      <p class="hint" id="aiProvHint" style="margin-top:10px"></p>
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button class="btn pri" id="btnAiSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= EDITOR ======================= -->
+  <section class="card" id="editorCard" style="margin-bottom:16px">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-tab="perf">Performance</button>
+      <button class="tab" data-tab="pixels">Individual LEDs <span class="tag m" id="selTag">0 sel</span></button>
+      <button class="tab" data-tab="fx">Effects</button>
+      <button class="tab" data-tab="link">Link to device</button>
+    </div>
+
+    <div class="panes">
+
+      <!-- ---------- performance ---------- -->
+      <div class="pane on" id="pane-perf">
+        <div class="grid3">
+          <div>
+            <label class="f">Master brightness <span class="val" id="vBright">60</span></label>
+            <input type="range" id="rBright" min="0" max="255" value="60">
+          </div>
+          <div>
+            <label class="f">Global speed <span class="val" id="vGspd">1.00&times;</span></label>
+            <input type="range" id="rGspd" min="1" max="40" value="10">
+          </div>
+          <div>
+            <label class="f">Frame rate <span class="val" id="vFps">25 fps</span></label>
+            <input type="range" id="rFps" min="4" max="60" value="25">
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          <div>
+            <label class="f">Output</label>
+            <button class="btn" id="btnMaster" style="width:100%">Output ON</button>
+          </div>
+          <div>
+            <label class="f">LED count / data pin</label>
+            <div class="row">
+              <input type="number" id="nLeds" min="1" max="64" value="16" style="width:82px">
+              <input type="number" id="nPin" min="0" max="16" value="4" style="width:82px">
+              <button class="btn sm" id="btnApplyHw">Apply</button>
+            </div>
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:14px">
+          <div>
+            <label class="f">Quick fill all pixels</label>
+            <div class="row">
+              <input type="color" id="fillColor" value="#ff3b30" style="width:56px">
+              <button class="btn sm" id="btnFill">Fill strip</button>
+              <button class="btn sm" id="btnBlack">Black out</button>
+            </div>
+          </div>
+          <div>
+            <label class="f">Quick effect over whole strip</label>
+            <div class="row wrap">
+              <button class="btn sm" data-quick="rainbow">Rainbow</button>
+              <button class="btn sm" data-quick="comet">Comet</button>
+              <button class="btn sm" data-quick="fire">Fire</button>
+              <button class="btn sm" data-quick="sparkle">Sparkle</button>
+              <button class="btn sm" data-quick="breathe">Breathe</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- individual pixels ---------- -->
+      <div class="pane" id="pane-pixels">
+        <div class="row wrap" style="margin-bottom:12px">
+          <div class="row">
+            <input type="color" id="pxColor" value="#ff0000" style="width:56px">
+            <input type="text" id="pxHex" class="mono" value="#ff0000" style="width:104px">
+          </div>
+          <span class="hint">edits apply to</span>
+          <select id="pxScope" style="width:190px">
+            <option value="selection">selected LEDs</option>
+            <option value="all">all LEDs</option>
+          </select>
+          <button class="btn sm" id="btnPxSelAll">Select all</button>
+          <button class="btn sm" id="btnPxSelNone">Clear selection</button>
+          <button class="btn sm" id="btnPxSelEven">Evens</button>
+          <button class="btn sm" id="btnPxSelOdd">Odds</button>
+          <button class="btn mag sm" id="btnPxEffect">Add pixel effect&hellip;</button>
+          <button class="btn danger sm" id="btnPxClear">Clear pixel layer</button>
+        </div>
+        <div class="pxgrid" id="pxgrid"></div>
+        <p class="hint" style="margin-top:10px">
+          Click an LED in the preview to select it. Shift-click extends, <kbd>Ctrl</kbd>+click toggles.
+          Typing over several selected LEDs paints them all at once. Colour edits become a
+          <b>pixel layer</b> in the stack, so you can still drop additive effects on top.
+        </p>
+      </div>
+
+      <!-- ---------- effects: picker + editor + stack ---------- -->
+      <div class="pane" id="pane-fx">
+        <p class="hint" style="margin:0 0 12px">
+          Click an effect to add it as a new layer &mdash; it plays instantly. Tweak it under
+          <b>Selected layer</b>. The stack composites bottom to top: layers lower in the list are painted first.
+        </p>
+
+        <label class="f">Add an effect <span class="hint" style="text-transform:none;letter-spacing:0">(all 16)</span></label>
+        <div class="ched" id="fxChips" style="margin-bottom:12px"></div>
+
+        <label class="f">Presets <span class="hint" style="text-transform:none;letter-spacing:0">(ready-made colours)</span></label>
+        <div class="ched" style="margin-bottom:4px">
+          <button class="chip" data-preset="rainbowCycle">Rainbow cycle</button>
+          <button class="chip" data-preset="theater">Theatre chase</button>
+          <button class="chip" data-preset="dualscan">Dual scan</button>
+          <button class="chip" data-preset="strobe">Strobe</button>
+          <button class="chip" data-preset="meteor">Meteor shower</button>
+          <button class="chip" data-preset="colorfade">Colour fade</button>
+          <button class="chip" data-preset="fire">Fire</button>
+        </div>
+
+        <div class="spread" style="margin:14px 0 8px">
+          <label class="f" style="margin:0">Selected layer <span class="val" id="fxLayerTag">none yet</span></label>
+          <div class="row">
+            <button class="btn sm" id="btnRangeFromSel">Range = LED selection</button>
+            <button class="btn sm" id="btnRangeSplit">Evens/odds split</button>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div>
+            <label class="f">Effect</label>
+            <select id="fxSel"></select>
+          </div>
+          <div>
+            <label class="f">Range</label>
+            <div class="row">
+              <input type="number" id="rngFrom" min="0" max="63" value="0" style="width:70px">
+              <span class="hint">to</span>
+              <input type="number" id="rngTo" min="0" max="63" value="15" style="width:70px">
+            </div>
+          </div>
+          <div>
+            <label class="f">Blend</label>
+            <select id="fxBlend">
+              <option value="0">over (replace)</option>
+              <option value="1">add</option>
+              <option value="2">screen</option>
+              <option value="3">multiply</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid3" style="margin-top:12px">
+          <div>
+            <label class="f">Colour 1</label>
+            <input type="color" id="fxC1" value="#ff0000">
+          </div>
+          <div>
+            <label class="f">Colour 2</label>
+            <input type="color" id="fxC2" value="#000000">
+          </div>
+          <div>
+            <label class="f">Speed <span class="val" id="vFxSpd">1.0&times;</span></label>
+            <input type="range" id="fxSpd" min="1" max="40" value="10">
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="f">Rate / BPM <span class="val" id="vFxBpm">60</span></label>
+          <input type="range" id="fxBpm" min="1" max="240" value="60">
+        </div>
+
+        <div class="row wrap" style="margin-top:14px">
+          <button class="btn pri sm" id="btnFxAdd">+ Add as new layer</button>
+          <button class="btn sm" id="btnOverlayAdd">Add glow (add blend)</button>
+          <button class="btn sm" id="btnOverlayScreen">Add glow (screen blend)</button>
+          <span style="margin-left:auto"></span>
+          <button class="btn sm" id="btnLayerUp">Move up</button>
+          <button class="btn sm" id="btnLayerDown">Move down</button>
+          <button class="btn danger sm" id="btnLayerDel">Delete layer</button>
+          <button class="btn danger sm" id="btnLayerAll">Clear stack</button>
+        </div>
+
+        <div class="spread" style="margin:16px 0 8px">
+          <label class="f" style="margin:0">Layer stack <span class="tag m" id="layerTag">0</span></label>
+          <div class="row">
+            <button class="btn sm" data-addlayer="solid">+ Solid fill</button>
+            <button class="btn sm" data-addlayer="pixels">+ Pixel layer</button>
+          </div>
+        </div>
+        <div id="layers"></div>
+        <p class="hint" style="margin-top:10px">
+          A pixel layer paints exact colours; effect layers above it with <b>add</b> or <b>screen</b> blend
+          ride on top &mdash; that is how you get per-LED colours <i>plus</i> animated effects over them.
+        </p>
+      </div>
+
+      <!-- ---------- link ---------- -->
+      <div class="pane" id="pane-link">
+        <div class="grid2">
+          <div>
+            <label class="f">WebSocket endpoint</label>
+            <div class="row">
+              <input type="text" id="wsUrl" class="mono" value="">
+              <button class="btn" id="btnConnect2">Connect</button>
+            </div>
+            <p class="hint" style="margin-top:8px">
+              Served from the device, this is auto-filled. Opening the file locally? Type
+              <span class="mono">ws://&lt;device-ip&gt;:82/</span>.
+            </p>
+          </div>
+          <div>
+            <label class="f">Transport mode</label>
+            <div class="row wrap">
+              <button class="btn sm" id="btnLive" title="Device renders the effect stack itself">Live engine (parameters only)</button>
+              <button class="btn sm" id="btnStream2" title="Send every computed frame">Stream frames</button>
+            </div>
+            <p class="hint" style="margin-top:8px">
+              <b>Live engine</b> uploads the layer stack and the ESP8266 animates it —
+              lowest bandwidth, survives disconnects. <b>Stream frames</b> ships the exact
+              16&times;RGB buffer you previewed, byte for byte.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top:16px">
+          <div>
+            <label class="f">Device actions</label>
+            <div class="row wrap">
+              <button class="btn pri sm" id="btnPush">Push stack</button>
+              <button class="btn cy sm" id="btnPushShow">Push show</button>
+              <button class="btn sm" id="btnSave">Save to flash</button>
+              <button class="btn sm" id="btnDiag" title="Print Wi-Fi, IP, WebSocket port and LED state to the Serial Monitor">Diag to serial</button>
+              <button class="btn danger sm" id="btnErase">Erase flash</button>
+            </div>
+          </div>
+          <div>
+            <label class="f">Payload budget</label>
+            <div class="bar"><i id="budgetBar" style="width:0%"></i></div>
+            <div class="spread" style="margin-top:6px">
+              <span class="hint" id="budgetTx">&mdash;</span>
+              <span class="hint mono" id="budgetHeap">&mdash;</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <div class="spread" style="margin-bottom:6px">
+            <label class="f" style="margin:0">Traffic monitor</label>
+            <button class="btn sm" id="btnMonClear">Clear</button>
+          </div>
+          <div class="mon" id="mon"></div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label class="f">Wiring reference</label>
+          <table class="map">
+            <tr><th>NeoPixel</th><th>NodeMCU</th><th>Note</th></tr>
+            <tr><td>DIN</td><td>GPIO4 / D2</td><td>through a 330&nbsp;&Omega; series resistor</td></tr>
+            <tr><td>5V / VCC</td><td>external 5V supply</td><td>do not power 16 LEDs from the board's 3V3</td></tr>
+            <tr><td>GND</td><td>GND</td><td>common ground with the ESP8266 is mandatory</td></tr>
+            <tr><td>&mdash;</td><td>5V supply +/&minus;</td><td>1000&nbsp;&micro;F capacitor across the rails</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<footer class="bar">
+  <button class="btn pri adv" id="btnSend">Send to NodeMCU</button>
+  <button class="btn cy adv" id="btnSendStream">Send + stream preview</button>
+  <button class="btn adv" id="btnExport">Export JSON</button>
+  <button class="btn adv" id="btnImport">Import</button>
+  <input type="file" id="fileImport" accept=".json" style="display:none">
+  <span class="stat" id="status">ready &middot; nothing sent yet</span>
+  <span class="stat" style="margin-left:auto" id="clock">0.00s</span>
+</footer>
+
+<script>
+/* ==========================================================================
+ * NeoPixel Studio — web controller
+ * The effect + compositing engine below is a 1:1 mirror of the C++ engine in
+ * NeoPixelStudio.ino. Same formulas, same frame clock, same blend maths, so
+ * the preview you watch is bit-identical to what the strip will show.
+ * ========================================================================== */
+'use strict';
+
+/* ----------------------------- constants -------------------------------- */
+const FX = ['Solid','Blink','Breathe','Rainbow','Rainbow cycle','Chase','Comet',
+            'Theatre chase','Colour wipe','Sparkle','Fire','Gradient',
+            'Dual scan','Strobe','Meteor shower','Colour fade'];
+const FX_ID = {}; FX.forEach((n,i)=>FX_ID[n]=i);
+const BLENDS = ['over','add','screen','multiply'];
+const MAX_LAYERS = 24, MAX_STEPS = 64, MAX_SHOW_BYTES = 6144, MAX_LEDS = 64;
+
+/* ------------------------------- state ---------------------------------- */
+const S = {
+  leds: 16, pin: 4,
+  brightness: 60, gspdQ: 10, fps: 25, masterOn: true,
+  layers: [],
+  selLayer: -1,
+  sel: new Set([0]),
+  px: new Array(16).fill(0).map(()=>[0,0,0]),   // direct hardware pixel colours
+  timeline: [],
+  curStep: -1,
+  palette: ['#ff0000','#00ff00','#0000ff','#ffffff','#ff8800','#8800ff','#00ffff','#ffff00'],
+  playing: true, mode: 'idle',
+  streaming: false, liveEngine: false,
+  autoPush: true, connected: false,
+  editsSincePush: 0
+};
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const clamp255 = v => clamp(Math.round(v),0,255);
+
+/* ------------------------------ colour ---------------------------------- */
+function parseHex (h){
+  h = String(h||'').replace('#','').trim();
+  if (h.length===3) h = h.split('').map(c=>c+c).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return [0,0,0];
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+const toHex = c => '#' + c.map(v=>clamp255(v).toString(16).padStart(2,'0')).join('');
+const c2 = (r,g,b) => [r,g,b];
+const scale8 = (v,s) => ((v*s)>>8) & 0xff;
+function hsv2rgb(h,s,v){
+  h = ((h%360)+360)%360;
+  const reg = Math.floor(h/60), rem = (h-reg*60)*255/60;
+  const p = v*(255-s)/255, q = v*(255-(s*rem)/255)/255, t = v*(255-(s*(255-rem))/255)/255;
+  const R = clamp255, out = [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][reg] ;
+  return out.map(R);
+}
+function mixc(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t].map(clamp255); }
+function mulc(c,f){ return c.map(v=>clamp255(v*f)); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+/* xorshift32 — identical to fxRand() in the firmware */
+function xr(seed){
+  seed ^= seed<<13; seed>>>=0;
+  seed ^= seed>>>17;
+  seed ^= seed<<5;  seed>>>=0;
+  return seed>>>0;
+}
+function randAt(i,bucket,t){
+  let s = (0x1234567 + Math.imul(i,2654435761) + Math.imul(bucket,40503))>>>0;
+  return xr(s)/4294967296;
+}
+
+/* --------------------------- effect engine ------------------------------ */
+/* Writes into rgba (3 bytes per pixel). Mirrors renderEffect() in C++.      */
+function renderEffect(effectId, c1, c2, speed, bpm, t, rangeStart, rangeEnd, n, rgba){
+  const ts = t/1000, span = (rangeEnd-rangeStart)+1;
+  const R = clamp255;
+  for (let i=0;i<n;i++){ rgba[i*3]=0; rgba[i*3+1]=0; rgba[i*3+2]=0; }
+
+  for (let i=0;i<n;i++){
+    if (i<rangeStart || i>rangeEnd) continue;
+    const k = i-rangeStart;
+    let px = [0,0,0];
+
+    switch (effectId){
+      case 0:  px = c1; break;
+
+      case 1: {                                  // Blink
+        let period = bpm>0.1 ? (30/bpm) : 0.5; if (period<0.02) period=0.02;
+        px = ((ts*speed % period) < period*0.5) ? c1 : c2; break;
+      }
+
+      case 2: {                                  // Breathe
+        let period = bpm>0.1 ? (60/bpm) : 2.0; if (period<0.05) period=0.05;
+        const ph = (ts*speed % period)/period;
+        const v = 0.5-0.5*Math.cos(ph*2*Math.PI);
+        px = [scale8(c1[0],R(v*255)), scale8(c1[1],R(v*255)), scale8(c1[2],R(v*255))]; break;
+      }
+
+      case 3: {                                  // Rainbow (spread across range)
+        const hue = (ts*speed*60 + k*(360/(span||1))) % 360;
+        px = hsv2rgb(hue,255,255); break;
+      }
+
+      case 4: {                                  // Rainbow cycle
+        const hue = (ts*speed*90 + k*22.5) % 360;
+        px = hsv2rgb(hue,255,255); break;
+      }
+
+      case 5: {                                  // Chase
+        const period = span||1;
+        const head = Math.floor((ts*speed*8) % period);
+        const d = ((k-head)%period+period)%period;
+        const fade = Math.floor(period/3)+1;
+        const v = d<fade ? 1-d/fade : 0;
+        px = [scale8(c1[0],R(v*255)), scale8(c1[1],R(v*255)), scale8(c1[2],R(v*255))]; break;
+      }
+
+      case 6: {                                  // Comet
+        const period = span||1;
+        const head = Math.floor((ts*speed*6) % period);
+        const d = ((k-head)%period+period)%period;
+        const tail = Math.floor(period/2)+1;
+        const v = d<tail ? Math.pow(0.72,d) : 0;
+        px = [scale8(c1[0],R(v*255)), scale8(c1[1],R(v*255)), scale8(c1[2],R(v*255))]; break;
+      }
+
+      case 7: {                                  // Theatre chase
+        const step = Math.floor(ts*speed*6);
+        px = ((((k+step)%3)+3)%3===0) ? c1 : c2; break;
+      }
+
+      case 8: {                                  // Colour wipe
+        let period = bpm>0.1 ? (60/bpm) : 2.0; if (period<0.05) period=0.05;
+        const ph = (ts*speed % period)/period;
+        const edge = ph*(span+1);
+        px = (k<edge) ? c1 : c2; break;
+      }
+
+      case 9: {                                  // Sparkle
+        const rate = speed * (bpm>0.1 ? bpm/60 : 1);
+        const prob = clamp(0.06*rate,0,0.9);
+        const bucket = Math.floor(t/60);
+        const r = (Math.floor(xr((0x1234567 + Math.imul(i,2654435761) + Math.imul(bucket,40503))>>>0)) & 0xFFFFFF)/16777216;
+        px = (r<prob) ? c1 : c2; break;
+      }
+
+      case 10: {                                 // Fire
+        const bucket = Math.floor(t/55);
+        let s = (0xABCDEF + Math.imul(i,2246822519) + Math.imul(bucket,3266489917))>>>0;
+        s = xr(s);
+        const r = (s & 0xFFFFFF)/16777216;
+        const wave = 0.5+0.5*Math.sin(ts*speed*3 + k*0.9);
+        const v = Math.min(1, 0.45+0.55*(0.5*r+0.5*wave));
+        px = hsv2rgb(14*(1-v)+10, 255, R(v*255)); break;
+      }
+
+      case 11: {                                 // Gradient sweep
+        const u = span>1 ? k/(span-1) : 0;
+        const w = 0.5+0.5*Math.sin(ts*speed*2*Math.PI*0.5);
+        const mix = u*(1-w) + (1-u)*w;
+        px = mixc(c1,c2,mix); break;
+      }
+
+      case 12: {                                 // Dual scan
+        const period = span||1;
+        const head = Math.floor((ts*speed*5) % period);
+        const a = head, b = period-1-head;
+        const w = Math.floor(period/4)+1;
+        const d = Math.min(Math.abs(k-a), Math.abs(k-b));
+        const v = d<w ? 1-d/w : 0;
+        px = [scale8(c1[0],R(v*255)), scale8(c1[1],R(v*255)), scale8(c1[2],R(v*255))]; break;
+      }
+
+      case 13: {                                 // Strobe
+        const rate = bpm>0.1 ? bpm/60 : 4;
+        let period = 1/(rate*(speed||1)); if (!isFinite(period)||period<0.03) period=0.03;
+        px = ((ts % period) < period*0.12) ? c1 : c2; break;
+      }
+
+      case 14: {                                 // Meteor shower
+        const period = span||1;
+        const bucket = Math.floor(t/45);
+        let s = (0x5BF03635 + Math.imul(bucket,2246822519))>>>0;
+        let m1=0,m2=0,m3=0;
+        if (bucket!==0){ m1=xr(s)%period; m2=xr(xr(s))%period; m3=xr(xr(xr(s)))%period; }
+        let v = 0;
+        for (const h of [m1,m2,m3]){
+          const d = ((k-h)%period+period)%period;
+          const tail = Math.floor(period/3)+1;
+          if (d<tail) v = Math.max(v, Math.pow(0.6,d));
+        }
+        v *= speed>0.35 ? 1 : 0.4;
+        const col = (c2[0]+c2[1]+c2[2] > 30) ? c2 : c1;
+        px = [scale8(col[0],R(v*255)), scale8(col[1],R(v*255)), scale8(col[2],R(v*255))]; break;
+      }
+
+      case 15: {                                 // Colour fade
+        let period = bpm>0.1 ? (120/bpm) : 8.0; if (period<0.2) period=0.2;
+        const ph = (ts*speed % period)/period;
+        const mix = 0.5-0.5*Math.cos(ph*2*Math.PI);
+        px = mixc(c1,c2,mix); break;
+      }
+    }
+    rgba[i*3]=px[0]; rgba[i*3+1]=px[1]; rgba[i*3+2]=px[2];
+  }
+}
+
+/* ---------------------------- compositor -------------------------------- */
+function blendPixel(buf,o,r,g,b,mode){
+  switch(mode){
+    case 1: buf[o]=clamp255(buf[o]+r); buf[o+1]=clamp255(buf[o+1]+g); buf[o+2]=clamp255(buf[o+2]+b); break;
+    case 2: buf[o]  = clamp255(255-((255-buf[o])  *(255-r))/255);
+            buf[o+1]= clamp255(255-((255-buf[o+1])*(255-g))/255);
+            buf[o+2]= clamp255(255-((255-buf[o+2])*(255-b))/255); break;
+    case 3: buf[o]  = clamp255(buf[o]  *r/255);
+            buf[o+1]= clamp255(buf[o+1]*g/255);
+            buf[o+2]= clamp255(buf[o+2]*b/255); break;
+    default: buf[o]=r; buf[o+1]=g; buf[o+2]=b; break;
+  }
+}
+
+function renderFrame(t){
+  const n = S.leds;
+  const dst = new Uint8Array(n*3);
+  const scratch = new Uint8Array(n*3);
+  const gspd = S.gspdQ/10;
+
+  for (const L of S.layers){
+    const rs = clamp(L.start,0,n-1);
+    const re = clamp(L.end,0,n-1);
+    if (re<rs) continue;
+    const spd = (L.speedQ/10)*gspd, bpm = L.bpmQ*10;
+
+    if (L.enabled === false) continue;
+
+    if (L.type === 'pixels'){
+      if (!L.pixels) continue;
+      for (let i=rs;i<=re;i++){
+        const o=i*3, a=(L.alpha==null?1:L.alpha);
+        blendPixel(dst,o, L.pixels[i*3]  *a, L.pixels[i*3+1]*a, L.pixels[i*3+2]*a, L.blend);
+      }
+    } else if (L.type === 'solid'){
+      for (let i=rs;i<=re;i++) blendPixel(dst,i*3, L.c1[0],L.c1[1],L.c1[2], L.blend);
+    } else {
+      renderEffect(L.effect, L.c1, L.c2, spd, bpm, t, rs, re, n, scratch);
+      for (let i=rs;i<=re;i++) blendPixel(dst,i*3, scratch[i*3],scratch[i*3+1],scratch[i*3+2], L.blend);
+    }
+  }
+
+  /* direct per-LED colours sit on top — this is what the LED editor paints */
+  for (let i=0;i<n;i++){
+    if (S.px[i] && (S.px[i][0]||S.px[i][1]||S.px[i][2])) {
+      dst[i*3]=S.px[i][0]; dst[i*3+1]=S.px[i][1]; dst[i*3+2]=S.px[i][2];
+    }
+  }
+  return dst;
+}
+
+/* ------------------------- timeline expansion --------------------------- */
+function expandStep(step, n){
+  const out = new Uint8Array(n*3);
+  if (!step || !step.runs) return out;
+  let px = 0;
+  for (const run of step.runs){
+    for (let j=0;j<run[0] && px<n;j++,px++){
+      out[px*3]=run[1]; out[px*3+1]=run[2]; out[px*3+2]=run[3];
+    }
+  }
+  return out;
+}
+
+function rleEncode(buf,n){
+  const runs=[]; let i=0;
+  while (i<n){
+    const r=buf[i*3],g=buf[i*3+1],b=buf[i*3+2];
+    let len=1;
+    while (i+len<n && len<255 &&
+           buf[(i+len)*3]===r && buf[(i+len)*3+1]===g && buf[(i+len)*3+2]===b) len++;
+    runs.push([len-1,r,g,b]);
+    i+=len;
+  }
+  return runs;
+}
+
+/* --------------------------- base64 helpers ----------------------------- */
+function b64FromBytes(bytes){
+  let s='';
+  for (let i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function bytesFromB64(b64){
+  const s = atob(b64), out = new Uint8Array(s.length);
+  for (let i=0;i<s.length;i++) out[i]=s.charCodeAt(i);
+  return out;
+}
+
+/* ------------------------------ the clock ------------------------------- */
+let clock = 0, lastTs = 0, playing = true, cur = new Uint8Array(16*3);
+let stepAccum = 0, stepIdx = -1;
+
+function loop(ts){
+  requestAnimationFrame(loop);
+  if (!lastTs) lastTs = ts;
+  let dt = (ts-lastTs)/1000; lastTs = ts;
+  if (dt > 0.25) dt = 0.25;                    // tab was backgrounded
+
+  if (playing){
+    clock += dt;
+    if (S.timeline.length){
+      stepAccum += dt*1000;
+      let guard = 0;
+      while (stepAccum >= S.timeline[(stepIdx+1+S.timeline.length)%S.timeline.length].ms && guard++ < 64){
+        stepIdx = (stepIdx+1) % S.timeline.length;
+        stepAccum -= S.timeline[stepIdx].ms;
+        if (stepIdx !== S.curStep){ S.curStep = stepIdx; markTimeline(); }
+      }
+    }
+  }
+
+  if (S.timeline.length && S.curStep>=0) cur = expandStep(S.timeline[S.curStep], S.leds);
+  else cur = renderFrame(clock*1000);
+
+  paint(cur);
+  updateHud();
+  if (S.streaming) streamTick();
+}
+requestAnimationFrame(loop);
+
+/* ---------------------------- preview paint ----------------------------- */
+let ledEls = [];
+function buildStrip(){
+  const host = $('#strip'); host.innerHTML=''; ledEls=[];
+  for (let i=0;i<S.leds;i++){
+    const d = document.createElement('div');
+    d.className='led'; d.dataset.i=i;
+    d.innerHTML = '<span class="idx">'+i+'</span>';
+    d.addEventListener('click', e=>{
+      if (e.shiftKey && S.sel.size){ const lo=Math.min(...S.sel), hi=i; S.sel=new Set(); for(let k=Math.min(lo,hi);k<=Math.max(lo,hi);k++)S.sel.add(k); }
+      else if (e.ctrlKey||e.metaKey){ S.sel.has(i)?S.sel.delete(i):S.sel.add(i); }
+      else S.sel = new Set([i]);
+      syncSel(); buildGrid(); renderLayers();
+    });
+    host.appendChild(d); ledEls.push(d);
+  }
+}
+function syncSel(){ ledEls.forEach((el,i)=>el.classList.toggle('sel', S.sel.has(i))); $('#selTag').textContent = S.sel.size+' sel'; }
+
+function paint(buf){
+  for (let i=0;i<ledEls.length;i++){
+    const r=buf[i*3],g=buf[i*3+1],b=buf[i*3+2];
+    const lum = (r*0.299+g*0.587+b*0.114);
+    const spread = lum>14 ? Math.min(26, 4+lum/9) : 0;
+    ledEls[i].style.background = `rgb(${r},${g},${b})`;
+    ledEls[i].style.boxShadow = spread ? `0 0 ${spread}px ${spread/2}px rgba(${r},${g},${b},.55), inset 0 0 8px rgba(255,255,255,.14)` : 'inset 0 0 0 1px rgba(255,255,255,.05)';
+  }
+  const hs = $('#playhead span'), ph = $('#playhead');
+  if (S.timeline.length && stepIdx>=0) hs.style.left = (stepIdx/Math.max(1,S.timeline.length))*100 + '%';
+  const i = S.sel.size ? [...S.sel][0] : 0;
+  const sc = [buf[i*3],buf[i*3+1],buf[i*3+2]];
+  $('#srcSwatch').style.background = `rgb(${sc[0]},${sc[1]},${sc[2]})`;
+  $('#srcTx').textContent = toHex(sc);
+  $('#frameInfo').textContent = 'frame ' + Math.round(clock*S.fps) + (S.timeline.length? '  ·  step '+(stepIdx+1)+'/'+S.timeline.length : '');
+}
+
+let hudT=0, frames=0, fpsShown=S.fps;
+function updateHud(){
+  $('#clock').textContent = clock.toFixed(2)+'s';
+  $('#prevClock').textContent = clock.toFixed(2)+' s';
+  const now = performance.now();
+  frames++;
+  if (now-hudT>500){ fpsShown = Math.round(frames*1000/(now-hudT)); frames=0; hudT=now; $('#prevFps').textContent = fpsShown+' fps'; }
+  $('#prevMode').textContent = S.mode;
+}
+
+/* --------------------------- layer authoring ---------------------------- */
+function mkEffect(effect, start, end, o={}){
+  return Object.assign({
+    type:'effect', effect:FX.indexOf(effect)>=0?FX.indexOf(effect):3,
+    c1:[255,0,0], c2:[0,0,0], speedQ:10, bpmQ:60,
+    start:start==null?0:start, end:end==null?S.leds-1:end,
+    blend:0, enabled:true
+  }, o);
+}
+function mkSolid(c, start, end, o={}){
+  return Object.assign({ type:'solid', effect:0, c1:c.slice(), c2:[0,0,0],
+    speedQ:10, bpmQ:60, start:start==null?0:start, end:end==null?S.leds-1:end,
+    blend:0, enabled:true }, o);
+}
+function mkPixels(o={}){
+  return Object.assign({ type:'pixels', effect:0, c1:[0,0,0], c2:[0,0,0],
+    speedQ:10, bpmQ:60, start:0, end:S.leds-1, blend:0, enabled:true,
+    pixels:new Uint8Array(S.leds*3), alpha:1 }, o);
+}
+function ensurePixels(){
+  let L = S.layers.find(l=>l.type==='pixels');
+  if (!L){ L = mkPixels(); S.layers.push(L); }
+  return L;
+}
+function defaultStack(){
+  S.layers = [ mkEffect('Rainbow cycle', 0, S.leds-1, {speedQ:6}) ];
+  S.selLayer = 0;
+}
+
+/* ------------------------------- layers UI ------------------------------ */
+function syncFxEditor(){
+  const L = S.layers[S.selLayer];
+  if (!L){ $('#fxLayerTag').textContent = 'none yet'; return; }
+  $('#fxLayerTag').textContent = 'layer '+(S.selLayer+1)+' of '+S.layers.length;
+  $('#fxSel').value = (L.type==='effect') ? L.effect : 0;
+  $('#fxSel').disabled = L.type==='pixels';
+  $('#fxC1').value = toHex(L.c1);
+  $('#fxC2').value = toHex(L.c2);
+  $('#rngFrom').value = L.start;
+  $('#rngTo').value = L.end;
+  $('#fxBlend').value = L.blend;
+  $('#fxSpd').value = L.speedQ;
+  $('#vFxSpd').textContent = (L.speedQ/10).toFixed(1)+'\u00d7';
+  $('#fxBpm').value = L.bpmQ;
+  $('#vFxBpm').textContent = L.bpmQ;
+}
+function addFxLayer(name, opts){
+  const L = mkEffect(name, 0, S.leds-1, opts||{});
+  S.layers.push(L);
+  S.selLayer = S.layers.length-1;
+  renderLayers(); push();
+}
+function buildFxChips(){
+  const host = $('#fxChips'); if (!host) return;
+  host.innerHTML = '';
+  FX.forEach(n=>{
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = n;
+    b.onclick = ()=>addFxLayer(n,{});
+    host.appendChild(b);
+  });
+}
+function renderLayers(){
+  if (S.selLayer >= S.layers.length) S.selLayer = S.layers.length-1;
+  if (S.selLayer < 0 && S.layers.length) S.selLayer = 0;
+  const host = $('#layers'); host.innerHTML='';
+  $('#layerTag').textContent = S.layers.length;
+  S.layers.forEach((L,idx)=>{
+    const el = document.createElement('div');
+    el.className = 'lrow'+(idx===S.selLayer?' sel':'');
+    el.onclick = ()=>{ S.selLayer=idx; renderLayers(); };
+    const grip = document.createElement('div');
+    grip.className='grip'; grip.textContent = idx+1;
+    const name = document.createElement('div');
+    name.className='lname';
+    const what = (L.type==='solid') ? 'Solid fill' : (L.type==='pixels' ? 'Pixel layer' : FX[L.effect]);
+    const where = (L.type==='pixels') ? 'all LEDs' : ('LEDs '+L.start+'-'+L.end);
+    name.textContent = what+'   \u00b7   '+where+(L.blend ? ('   \u00b7   blend: '+BLENDS[L.blend]) : '');
+    const acts = document.createElement('div'); acts.className='lacts';
+    const on = document.createElement('button');
+    on.className='btn icon'+(L.enabled?' on':''); on.textContent = L.enabled?'on':'off';
+    on.onclick = (e)=>{ e.stopPropagation(); L.enabled=!L.enabled; renderLayers(); push(); };
+    const du = document.createElement('button'); du.className='btn icon'; du.textContent='dup';
+    du.onclick = (e)=>{ e.stopPropagation();
+      const cp = JSON.parse(JSON.stringify(L, (k,v)=> v instanceof Uint8Array ? Array.from(v) : v));
+      cp.pixels = cp.pixels ? Uint8Array.from(cp.pixels) : null;
+      S.layers.splice(idx+1,0,cp); S.selLayer=idx+1; renderLayers(); push(); };
+    const rm = document.createElement('button'); rm.className='btn icon danger'; rm.textContent='del';
+    rm.onclick = (e)=>{ e.stopPropagation(); S.layers.splice(idx,1); S.selLayer=Math.min(S.selLayer,S.layers.length-1); renderLayers(); push(); };
+    acts.append(on,du,rm);
+    el.append(grip,name,acts);
+    host.appendChild(el);
+  });
+  if (!S.layers.length) host.innerHTML = '<p class="hint">Stack is empty \u2014 click an effect above to add one.</p>';
+  syncFxEditor();
+}
+
+/* ------------------------------ pixel grid ------------------------------ */
+function buildGrid(){
+  const host = $('#pxgrid'); host.innerHTML='';
+  for (let i=0;i<S.leds;i++){
+    const d = document.createElement('div');
+    d.className='px'+(S.sel.has(i)?' sel':'');
+    const sw = document.createElement('div'); sw.className='sw';
+    sw.style.background = toHex(S.px[i]);
+    const inp = document.createElement('input'); inp.type='color'; inp.value=toHex(S.px[i]);
+    inp.oninput = ()=>{ setPixels(i, parseHex(inp.value)); };
+    const lbl = document.createElement('div'); lbl.className='lbl'; lbl.textContent = '#'+i;
+    d.append(sw,inp,lbl);
+    d.onclick = (e)=>{ if (e.target===inp) return; S.sel=new Set([i]); syncSel(); buildGrid(); };
+    host.appendChild(d);
+  }
+}
+
+/* paint a colour onto selected (or all) LEDs, live on the strip + device */
+function setPixels(idx, rgb){
+  const targets = ($('#pxScope').value==='all') ? Array.from({length:S.leds},(_,i)=>i)
+                : (S.sel.size ? [...S.sel] : [idx]);
+  const L = ensurePixels();
+  for (const i of targets){
+    S.px[i] = rgb.slice();
+    L.pixels[i*3]=rgb[0]; L.pixels[i*3+1]=rgb[1]; L.pixels[i*3+2]=rgb[2];
+  }
+  // direct write so it appears instantly even while an effect is running
+  const bytes = new Uint8Array(2+targets.length*3);
+  bytes[0]=targets[0]; bytes[1]=targets.length;
+  targets.forEach((t,j)=>{ bytes[2+j*3]=rgb[0]; bytes[3+j*3]=rgb[1]; bytes[4+j*3]=rgb[2]; });
+  wsSend('p', bytes);
+  push();
+  buildGrid();
+}
+
+/* ----------------------------- effect list ------------------------------ */
+function fillFxSelect(){
+  const sel = $('#fxSel'); sel.innerHTML='';
+  FX.forEach((n,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=n; sel.appendChild(o); });
+  sel.value = 4;
+}
+
+/* ------------------------------ timeline UI ----------------------------- */
+function renderTimeline(){
+  const host = $('#timeline'); host.innerHTML='';
+  S.timeline.forEach((st,idx)=>{
+    const d = document.createElement('div');
+    d.className='tlStep'+(idx===S.curStep?' cur':'');
+    const mini = document.createElement('div'); mini.className='mini';
+    const buf = expandStep(st,S.leds);
+    for (let i=0;i<S.leds;i++){
+      const s=document.createElement('i');
+      s.style.background = `rgb(${buf[i*3]},${buf[i*3+1]},${buf[i*3+2]})`;
+      mini.appendChild(s);
+    }
+    const ms = document.createElement('div'); ms.className='ms';
+    ms.innerHTML = '<span>'+st.ms+'ms</span><span>'+st.runs.length+'r</span>';
+    const n = document.createElement('div'); n.className='n'; n.textContent = idx+1;
+    d.append(mini,ms,n);
+    d.onclick = ()=>{ S.curStep=idx; stepIdx=idx; stepAccum=0; clock=0; S.timeline.length&&sendStep(idx); markTimeline(); };
+    host.appendChild(d);
+  });
+  const add = document.createElement('button');
+  add.className='tlAdd'; add.textContent='+';
+  add.onclick = snapshotFrame;
+  host.appendChild(add);
+  updateBudget();
+}
+function markTimeline(){ $$('.tlStep').forEach((e,i)=>e.classList.toggle('cur', i===S.curStep)); }
+
+function snapshotFrame(){
+  const buf = cur.length===S.leds*3 ? cur : renderFrame(clock*1000);
+  const ms = Math.max(20, Math.round(1000/S.fps));
+  if (S.curStep < 0 || S.timeline.length===0){
+    S.timeline = [{ ms, runs: rleEncode(buf,S.leds) }];      // first snapshot starts the show
+    S.curStep = 0;
+  } else {
+    S.timeline[S.curStep].ms = ms;                            // re-snapshot updates in place
+    S.timeline[S.curStep].runs = rleEncode(buf,S.leds);
+  }
+  if (S.timeline.length>MAX_STEPS) S.timeline.shift();
+  renderTimeline();
+  updateBudget();
+  log('sy','snapshot frame '+(S.curStep+1)+' ('+ms+'ms, '+S.timeline[S.curStep].runs.length+' runs)');
+}
+
+/* --------------------------- device transport --------------------------- */
+let ws=null, wsReq=0, pending=new Map(), txCount=0, lastStream=0;
+let devHeap=0, showBytes=0, layersOnDev=0;
+
+let quiet = false;                 // suppressed while streaming (25 fps of noise)
+function log(cls,txt){
+  if (quiet && cls==='in') return;
+  const m = $('#mon'); if(!m) return;
+  const line = document.createElement('div');
+  line.className = cls;
+  const t = new Date().toLocaleTimeString('en-GB',{hour12:false});
+  line.textContent = t+'  '+txt;
+  m.appendChild(line); m.scrollTop = m.scrollHeight;
+  while (m.childNodes.length>240) m.removeChild(m.firstChild);
+}
+
+/* Must match WS_PORT in NeoPixelStudio.ino. Not 81, because the ESP8266 core's
+   OTA server can claim that port, in which case the browser reports "offline"
+   forever while plain HTTP on port 80 works fine. */
+const WS_PORT = 82;
+
+/* The device serves this page from its own IP, so the WebSocket lives at the
+   same host on WS_PORT. Never invent a default IP: guessing "192.168.1.50" is
+   how the UI ends up permanently "offline" while the board is perfectly
+   reachable at a different address. */
+function wsHostFromPage(){
+  const h = location.hostname;
+  if (!h) return '';                       // opened from file:// - no host to use
+  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return '';  // dev server
+  return h;
+}
+function wsUrlAuto(){
+  const h = wsHostFromPage();
+  return h ? ('ws://' + h + ':' + WS_PORT + '/') : '';
+}
+function wsUrlDefault(){
+  return wsUrlAuto() || ('ws://192.168.1.50:' + WS_PORT + '/');   // last resort
+}
+
+function connect(userInitiated){
+  const url = $('#wsUrl').value.trim() || wsUrlDefault();
+
+  /* NEVER tear down an attempt that is still in flight. Calling close() on a
+     CONNECTING socket is exactly what produces
+       "WebSocket is closed before the connection is established"
+     and because that fires onclose, which schedules another connect(), the page
+     ends up in an endless reconnect storm that can never succeed. */
+  if (ws && ws.readyState === WebSocket.CONNECTING){
+    log('sy','connect() ignored - an attempt is already in progress');
+    return;
+  }
+
+  stopReconnect();
+  if (heartbeat){ clearInterval(heartbeat); heartbeat = null; }
+
+  if (ws && ws.readyState === WebSocket.OPEN){
+    // deliberate reconnect of a live socket: mark it so onclose does not treat
+    // this as a failure and start retrying
+    intentionalClose = true;
+  }
+
+  retryDelay = 1000;
+  log('sy','connecting '+url);
+  const sock = new WebSocket(url);
+  ws = sock;
+  sock.binaryType='arraybuffer';
+  /* Every handler checks `ws === sock` first. Without that, an event from a
+     socket we already replaced can drive the CURRENT connection - e.g. a stale
+     onclose scheduling a reconnect that tears down a healthy socket. */
+  sock.onopen = ()=>{ if (ws !== sock) return;
+                    S.connected=true; setConn('on','connected'); log('sy','socket open');
+                    retryDelay = 1000;                       // healthy: reset backoff
+                    stopReconnect();
+                    $('#btnLive').classList.add('on'); S.liveEngine=true;
+                    lastRx = performance.now(); startHeartbeat();
+                    setTimeout(()=>{ if (ws !== sock || !S.autoPush) return; pushAll(); },50); };
+  sock.onclose = (e)=>{ if (ws !== sock) return;
+                     S.connected=false; S.streaming=false; quiet=false;
+                     if (heartbeat){ clearInterval(heartbeat); heartbeat = null; }
+                     $('#btnStream').classList.remove('on');
+                     const wasClean = e.wasClean ? 'clean' : 'abrupt';
+                     log('er','socket closed: code='+e.code+' '+wasClean+' reason='+(e.reason||'-'));
+                     if (intentionalClose){
+                       intentionalClose = false;
+                       setConn('','offline');
+                     } else {
+                       // A drop must not leave the UI claiming to be connected with
+                       // nothing working. Retry once per backoff interval - the timer
+                       // is one-shot, so this cannot stack up into a storm.
+                       setConn('wait','reconnecting');
+                       scheduleReconnect();
+                     } };
+  sock.onerror = (e)=>{ if (ws !== sock) return;
+                     setConn('wait','error');
+                     log('er','socket error'+(e && e.message ? ': '+e.message : '')); };
+  sock.onmessage = e=>{
+    if (ws !== sock) return;
+    /* EVERY handler is wrapped. An uncaught exception inside onmessage aborts
+       the handler and can take the socket down with it. */
+    lastRx = performance.now();
+    try {
+      handleMessage(e.data);
+    } catch(err){
+      log('er','message handler threw: '+(err && err.message ? err.message : err));
+      console.error('NeoPixel Studio: message handler threw', err, 'payload:', e.data);
+    }
+  };
+}
+
+let lastRx = 0, heartbeat = null, retry = null, retryDelay = 1000, intentionalClose = false;
+
+function stopReconnect(){
+  if (retry){ clearTimeout(retry); retry = null; }
+}
+
+/* One-shot retry with backoff. The timer is cleared before being re-armed and
+   connect() refuses to start while an attempt is CONNECTING, so a failing
+   connection cannot stack into a reconnect storm. */
+function scheduleReconnect(){
+  if (retry) return;                       // one outstanding attempt at a time
+  log('sy','reconnecting in '+(retryDelay/1000).toFixed(0)+'s');
+  retry = setTimeout(()=>{ retry = null; connect(true); }, retryDelay);
+  retryDelay = Math.min(retryDelay * 2, 8000);      // back off, cap at 8s
+}
+
+/* If the device stops answering, drop and reconnect rather than sitting on a
+   half-dead socket that looks connected. */
+function startHeartbeat(){
+  if (heartbeat) clearInterval(heartbeat);
+  heartbeat = setInterval(()=>{
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (lastRx && (performance.now() - lastRx) > 12000){
+      log('er','no data from the device for 12s - forcing a reconnect');
+      clearInterval(heartbeat); heartbeat = null;
+      try { ws.close(); } catch(err){}
+      scheduleReconnect();
+      return;
+    }
+    wsSend('h');            // cheap liveness probe; device replies with hello
+  }, 5000);
+}
+
+function handleMessage(raw){
+    let m; try { m = JSON.parse(raw); } catch(err){ return; }
+    if (m.ev==='hello'){
+      S.leds = m.leds||S.leds; S.pin=m.pin??S.pin; S.brightness=(m.wantBrightness!=null)?m.wantBrightness:S.brightness;
+      S.gspdQ=m.gspd??S.gspdQ; S.fps = m.fps||S.fps; S.masterOn = !!m.on;
+      devHeap = m.heap||0; showBytes=m.showBytes||0; layersOnDev = m.layers||0;
+      $('#devIp').textContent = m.ip||'—'; $('#devHeap').textContent = (devHeap/1024).toFixed(1)+'K';
+      $('#nLeds').value=S.leds; $('#nPin').value=S.pin;
+      /* The slider shows the user's INTENT; the device reports the effective
+         value after its supply cap. Showing the effective one stops the UI from
+         silently disagreeing with what the strip is actually being driven at. */
+      const want = (m.wantBrightness!=null) ? m.wantBrightness : S.brightness;
+      $('#rBright').value = want;
+      if (m.brightness!=null && m.brightness < want){
+        $('#vBright').textContent = m.brightness + ' (capped from ' + want + ')';
+        log('sy','brightness capped to '+m.brightness+' by the board (supply '+
+            (m.supplyMv||'?')+' mV) - requested '+want);
+      } else {
+        $('#vBright').textContent = want;
+      }
+      if (m.supplyMv && m.supplyMv < 4500){
+        log('sy','board is powering the strip from '+m.supplyMv+' mV (3V3 pin): '+
+            'WS2812B wants 5 V, so blues will be weak and brightness is limited');
+      }
+      $('#rGspd').value=S.gspdQ; $('#vGspd').textContent=(S.gspdQ/10).toFixed(2)+'\u00d7';
+      $('#rFps').value=S.fps; $('#vFps').textContent=S.fps+' fps';
+      $('#rSimBright').value=S.brightness; $('#rSimSpd').value=S.gspdQ;
+      /* The board just told us its IP. If we are running from a local file we
+         may have guessed the endpoint wrong, so correct it and reconnect. */
+      if (m.ip && !wsHostFromPage() && $('#wsUrl').value.indexOf(m.ip) < 0){
+        const fixed = 'ws://' + m.ip + ':' + WS_PORT + '/';
+        if ($('#wsUrl').value !== fixed){
+          $('#wsUrl').value = fixed;
+          log('sy','board reports IP '+m.ip+' - retrying at '+fixed);
+          setTimeout(connect, 120);
+        }
+      }
+      $('#btnMaster').textContent = S.masterOn?'Output ON':'Output OFF';
+      $('#btnMaster').classList.toggle('on',S.masterOn);
+      buildStrip(); buildGrid(); syncSel();
+      log('out','hello fw'+m.fw+' leds='+S.leds+' steps='+(m.steps||0));
+      updateBudget();
+    }
+    else if (m.ev==='ack'){ const p=pending.get(m.i); if(p){ pending.delete(m.i); log('out','ack '+m.i+' ('+m.k+')'); } }
+    else if (m.ev==='nack'){ log('er','nack '+(m.i||'')+' '+m.e); }
+    else if (m.ev==='layers'){ layersOnDev=m.n; log('out','device stack: '+m.n+' layers'); }
+    else if (m.ev==='show'){ showBytes=m.bytes||0; log('out','device show: '+m.steps+' steps, '+m.bytes+'B'); updateBudget(); }
+    else if (m.ev==='step'){ stepIdx=m.i; S.curStep=m.i; markTimeline(); }
+    else if (m.ev==='stats'){ if (m.heap) { devHeap=m.heap; $('#devHeap').textContent=(devHeap/1024).toFixed(1)+'K'; } updateBudget(); }
+}
+function setConn(cls,txt){ $('#connDot').className='dot '+cls; $('#connTx').textContent=txt; }
+
+let ackPending = 0;
+/* The device keeps only a ~1 KB message buffer (ESP8266 DRAM is tight) and
+   JavaScript has no way to emit RFC 6455 fragments, so payloads are split here
+   at the application level, in two stages:
+
+     1. BLOB_CHUNK bytes of raw payload per logical message, reassembled by the
+        device into its RAM buffer and handed to the handler as one blob.
+     2. Each of those messages is then split into FRAG_CHARS-character
+        fragments, because a JSON message carries base64 (4/3 expansion) plus
+        an envelope, and must still fit the device's message ceiling.
+
+   "p":1 starts a multi-message payload, "M":1 means more messages follow.
+   "f":1 starts a logical message, "m":1 means more fragments follow. */
+/* These two must satisfy: ceil(BLOB_CHUNK/3)*4 <= FRAG_CHARS, so one logical
+   message never needs more base64 than a single fragment batch carries.
+   256 -> 344 <= 384. tests/budget_test.js asserts the relationship, because
+   getting it wrong is silent corruption rather than an error. */
+const BLOB_CHUNK = 256;      // decoded bytes per logical message
+const FRAG_CHARS = 384;      // base64 chars per fragment (384 -> 288 B decoded)
+
+function wsSend(key, bytes){
+  /* readyState, NOT state. This was `ws.state`, which is undefined on a
+     WebSocket, so the guard was ALWAYS true and every single send returned
+     false silently: tx stayed at 0, the device never saw a message, and the UI
+     still rendered fine because nothing threw. Guard with an explicit check and
+     log it, so a dropped send can never be invisible again. */
+  if (!ws){ log('er','tx dropped: no socket'); return false; }
+  if (ws.readyState !== WebSocket.OPEN){
+    log('er','tx dropped: socket not open (readyState='+ws.readyState+')');
+    return false;
+  }
+  if (ackPending > 40){ log('er','tx queue full — dropping'); return false; }
+  const id = ++wsReq;
+  const hasVal = !!(bytes && bytes.length);
+  /* Field order matters: the firmware reads "i" then "k" by searching from the
+     start of the frame, so the big base64 value must come last. */
+  const env = { i:id, k:key };
+  let nFrag = 0;
+
+  if (!hasVal){
+    ws.send(JSON.stringify(env));
+    nFrag = 1;
+  } else {
+    const multi = bytes.length > BLOB_CHUNK;
+    let first = true;
+    for (let off = 0; off < bytes.length; off += BLOB_CHUNK){
+      const lastBlob = (off + BLOB_CHUNK) >= bytes.length;
+      const b64 = b64FromBytes(bytes.subarray(off, Math.min(off + BLOB_CHUNK, bytes.length)));
+      // a message always fits: 384*2 <= 1 KB, and the envelope is ~50 bytes
+      for (let f = 0; f < b64.length; f += FRAG_CHARS){
+        const lastFrag = (f + FRAG_CHARS) >= b64.length;
+        const msg = {
+          i:id, k:key,
+          f:first ? 1 : 0,                          // starts a logical message
+          m:lastFrag ? 0 : 1,                       // more fragments follow
+          v:b64.substr(f, FRAG_CHARS)
+        };
+        if (multi) msg.p = first ? 1 : 0;           // starts a multi-message payload
+        if (multi) msg.M = (lastBlob && lastFrag) ? 0 : 1;
+        ws.send(JSON.stringify(msg));
+        nFrag++;
+        first = false;
+      }
+    }
+  }
+  txCount++; $('#txCount').textContent = txCount;
+  log('in', key+' #'+id+(hasVal?' '+bytes.length+'B':'')+(nFrag>1?' ('+nFrag+' frags)':''));
+  return true;
+}
+
+/* ---- encoders ---------------------------------------------------------- */
+function pushGlobals(){
+  const b = new Uint8Array([S.brightness, S.gspdQ, S.fps, S.masterOn?1:0]);
+  wsSend('b', b);
+}
+/* Layer blob (must match applyLayers() in the firmware):
+     [count] [ 11 bytes per layer ]            <- header, fixed size
+     [0xFE][layerIndex][pixelCount][rgb*N]     <- optional pixel payload
+     [0xFD][blend per layer]                   <- optional blend table
+   The 11-byte record packs the range as two nibbles, which is why ranges are
+   clamped to 0..15 (a 16-LED strip needs exactly that). */
+function pushLayers(){
+  const n = S.layers.length;
+  const parts = [new Uint8Array([n])];
+  for (const L of S.layers){
+    parts.push(new Uint8Array([
+      L.type==='solid'?0:(L.type==='effect'?1:2),
+      L.type==='solid'?0:L.effect,
+      L.c1[0],L.c1[1],L.c1[2], L.c2[0],L.c2[1],L.c2[2],
+      clamp(L.speedQ,1,255), clamp(L.bpmQ,1,255),
+      ((clamp(L.start,0,15))&0x0F) | ((clamp(L.end,0,15)&0x0F)<<4)
+    ]));
+  }
+  const px = S.layers.findIndex(l=>l.type==='pixels');
+  if (px>=0 && S.layers[px].pixels){
+    parts.push(new Uint8Array([0xFE, px, S.leds]));
+    parts.push(S.layers[px].pixels.slice(0,S.leds*3));
+  }
+  parts.push(new Uint8Array([0xFD, ...S.layers.map(L=>clamp(L.blend,0,3))]));
+  const blob = concat(parts);
+  const ok = wsSend('l', blob);
+  if (ok) S.editsSincePush = 0;
+}
+function pushTimeline(){
+  const n = S.timeline.length;
+  const head = new Uint8Array(2 + n*4);
+  head[0]=n&0xFF; head[1]=(n>>8)&0xFF;
+  let o=2, total=n*0;
+  S.timeline.forEach(st=>{
+    head[o]=st.ms&0xFF; head[o+1]=(st.ms>>8)&0xFF; head[o+2]=S.leds; head[o+3]=0; o+=4;
+  });
+  const parts=[head];
+  S.timeline.forEach(st=>{
+    const b=new Uint8Array(st.runs.length*4);
+    st.runs.forEach((r,j)=>{ b[j*4]=r[0]; b[j*4+1]=r[1]; b[j*4+2]=r[2]; b[j*4+3]=r[3]; });
+    parts.push(b);
+  });
+  const all = concat(parts);
+  if (all.length-2 > MAX_SHOW_BYTES){ log('er','show payload '+(all.length-2)+'B exceeds device budget '+MAX_SHOW_BYTES+'B'); }
+  wsSend('t', all);
+}
+function concat(list){
+  const len = list.reduce((a,b)=>a+b.length,0);
+  const out = new Uint8Array(len);
+  let o=0; for (const b of list){ out.set(b,o); o+=b.length; }
+  return out;
+}
+function pushAll(){ pushGlobals(); pushLayers(); if (S.timeline.length) pushTimeline(); }
+
+/* ---- streaming --------------------------------------------------------- */
+let streamLedgers = { bytes:0, t0:0, fps:0 };
+let streamMode = false;
+function setStream(on){
+  S.streaming = on; quiet = on;
+  wsSend('S', new Uint8Array([on?1:0, 0]));
+  $('#btnStream').classList.toggle('on', on);
+  $('#btnStream2').classList.toggle('on', on);
+  S.mode = on ? 'stream' : 'live';
+  log('sy','stream '+(on?'enabled':'disabled'));
+}
+let lastStreamKey = '';
+function streamTick(){
+  const now = performance.now();
+  const period = 1000/S.fps;
+  if (now-lastStream < period) return;
+  lastStream = now;
+  const key = Array.from(cur).join(',');
+  if (key===lastStreamKey) return;            // static frame: nothing to send
+  lastStreamKey = key;
+  const b = new Uint8Array(2+S.leds*3);
+  b[0]=0; b[1]=S.leds;
+  b.set(cur.subarray(0,S.leds*3), 2);
+  wsSend('p', b);
+}
+
+/* ------------------------------ budgets --------------------------------- */
+function timelineBytes(){
+  return S.timeline.reduce((a,s)=>a + s.runs.length*4, 0);
+}
+function updateBudget(){
+  const used = timelineBytes();
+  const pct = Math.min(100, Math.round(used/MAX_SHOW_BYTES*100));
+  $('#budgetBar').style.width = pct+'%';
+  $('#budgetBar').style.background = pct>85? 'linear-gradient(90deg,#fbbf24,#f87171)' : '';
+  $('#budgetTx').textContent = 'show '+used+' B / '+MAX_SHOW_BYTES+' B ('+S.timeline.length+' steps, '+S.timeline.reduce((a,s)=>a+s.ms,0)+' ms)';
+  $('#budgetHeap').textContent = devHeap? 'device heap '+devHeap+' B' : 'device heap —';
+  $('#tlInfo').textContent = S.timeline.length? S.timeline.length+' steps · '+(S.timeline.reduce((a,s)=>a+s.ms,0)/1000).toFixed(2)+' s' : 'empty — snapshot frames to build a show';
+}
+
+/* ------------------------------- actions -------------------------------- */
+function push(){
+  /* Editing the stack does not destroy a show you already built — the show is
+     a recording, so it stays valid. Use "Clear" to drop it. */
+  if (S.connected && S.autoPush) pushLayers();
+  updateBudget();
+}
+
+function bindUI(){
+  /* tabs */
+  $$('#tabs .tab').forEach(t=>t.onclick=()=>{
+    $$('#tabs .tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
+    $$('.pane').forEach(p=>p.classList.remove('on'));
+    $('#pane-'+t.dataset.tab).classList.add('on');
+  });
+
+  /* transport */
+  $('#btnPlay').onclick = ()=>{ playing=true; sendPlay(1); log('sy','play'); };
+  $('#btnPause').onclick = ()=>{ playing=false; sendPlay(2); log('sy','pause'); };
+  $('#btnStop').onclick = ()=>{ playing=false; clock=0; stepIdx=-1; stepAccum=0; S.curStep=-1;
+                                S.px = S.px.map(()=>[0,0,0]); sendPlay(0); markTimeline(); };
+  $('#btnStream').onclick = ()=> setStream(!S.streaming);
+  $('#btnStream2').onclick = ()=> setStream(!S.streaming);
+  $('#btnLive').onclick = ()=>{ if (S.streaming) setStream(false); S.liveEngine=true; pushAll(); $('#btnLive').classList.add('on'); };
+  $('#btnConnect').onclick = connect;
+  $('#btnConnect2').onclick = connect;
+
+  /* performance */
+  $('#rBright').oninput = e=>{ S.brightness=+e.target.value; $('#vBright').textContent=S.brightness; pushGlobals(); };
+  $('#rGspd').oninput = e=>{ S.gspdQ=+e.target.value; $('#vGspd').textContent=(S.gspdQ/10).toFixed(2)+'\u00d7'; pushGlobals(); };
+  $('#rFps').oninput = e=>{ S.fps=+e.target.value; $('#vFps').textContent=S.fps+' fps'; pushGlobals(); };
+  $('#btnMaster').onclick = e=>{ S.masterOn=!S.masterOn; e.target.textContent=S.masterOn?'Output ON':'Output OFF';
+                                 e.target.classList.toggle('on',S.masterOn); pushGlobals(); };
+  $('#btnApplyHw').onclick = ()=>{
+    const n = clamp(+$('#nLeds').value,1,MAX_LEDS), p = clamp(+$('#nPin').value,0,16);
+    if (n!==S.leds){
+      if (!confirm('Changing the LED count rebuilds every layer and clears painted pixels. Continue?')) return;
+      S.leds=n; S.pin=p; S.px = new Array(n).fill(0).map(()=>[0,0,0]);
+      S.layers = S.layers.map(L=>{ const c = Object.assign({},L); c.end=Math.min(c.end,n-1); if (c.pixels) c.pixels=new Uint8Array(n*3); return c; });
+      S.timeline=[]; buildStrip(); buildGrid(); syncSel(); renderTimeline();
+    } else S.pin=p;
+    wsSend('c', new Uint8Array([S.leds, S.pin]));     // geometry
+    pushGlobals();
+    pushAll();
+  };
+  $('#btnFill').onclick = ()=>{
+    const c = parseHex($('#fillColor').value);
+    S.px = S.px.map(()=>c.slice());
+    const b = new Uint8Array(3); b[0]=c[0]; b[1]=c[1]; b[2]=c[2]; wsSend('A', b);
+    buildGrid();
+  };
+  $('#btnBlack').onclick = ()=>{
+    S.px = S.px.map(()=>[0,0,0]); S.layers = []; S.selLayer = -1;
+    S.curStep=-1; stepIdx=-1; stepAccum=0; if (S.streaming) setStream(false); wsSend('t', new Uint8Array([0,0,0])); markTimeline(); wsSend('A', new Uint8Array([0,0,0])); renderLayers(); buildGrid(); push();
+  };
+  $$('[data-quick]').forEach(b=>b.onclick=()=>{
+    const m = { rainbow:['Rainbow cycle',0,0], comet:['Comet',0,1], fire:['Fire',0,1],
+                sparkle:['Sparkle',0,1], breathe:['Breathe',0,0] }[b.dataset.quick];
+    S.layers = [ mkEffect(m[0],0,S.leds-1,{c1:parseHex('#ff8800'),c2:parseHex('#000000'),
+                  blend:m[2]?1:0, speedQ:8}) ];
+    S.selLayer=0; S.playing = true; S.curStep=-1; stepIdx=-1; stepAccum=0; if (S.streaming) setStream(false); wsSend('t', new Uint8Array([0,0,0])); markTimeline(); renderLayers(); push();
+  });
+
+  /* individual pixels */
+  const syncPx = (hex)=>{ $('#pxColor').value=hex; $('#pxHex').value=hex;
+    const rgb=parseHex(hex); const t=[...S.sel]; const L=ensurePixels();
+    const targets = ($('#pxScope').value==='all')? Array.from({length:S.leds},(_,i)=>i) : (t.length?t:[0]);
+    targets.forEach(i=>{ S.px[i]=rgb.slice(); L.pixels[i*3]=rgb[0];L.pixels[i*3+1]=rgb[1];L.pixels[i*3+2]=rgb[2]; });
+    if (targets.length){
+      const bytes=new Uint8Array(2+targets.length*3); bytes[0]=targets[0]; bytes[1]=targets.length;
+      targets.forEach((tt,j)=>{ bytes[2+j*3]=rgb[0];bytes[3+j*3]=rgb[1];bytes[4+j*3]=rgb[2]; });
+      wsSend('p', bytes);
+    }
+    buildGrid(); renderLayers(); push();
+  };
+  $('#pxColor').oninput = e=> syncPx(e.target.value);
+  $('#pxHex').onchange = e=>{ const h=e.target.value.startsWith('#')?e.target.value:'#'+e.target.value; syncPx(h); };
+  $('#btnPxSelAll').onclick  = ()=>{ S.sel=new Set(Array.from({length:S.leds},(_,i)=>i)); syncSel(); buildGrid(); renderLayers(); };
+  $('#btnPxSelNone').onclick = ()=>{ S.sel=new Set(); syncSel(); buildGrid(); renderLayers(); };
+  $('#btnPxSelEven').onclick = ()=>{ S.sel=new Set(Array.from({length:S.leds},(_,i)=>i).filter(i=>i%2===0)); syncSel(); buildGrid(); renderLayers(); };
+  $('#btnPxSelOdd').onclick  = ()=>{ S.sel=new Set(Array.from({length:S.leds},(_,i)=>i).filter(i=>i%2===1)); syncSel(); buildGrid(); renderLayers(); };
+  $('#btnPxEffect').onclick  = ()=>{
+    if (!S.sel.size) { alert('Select at least one LED first.'); return; }
+    const lo=Math.min(...S.sel), hi=Math.max(...S.sel);
+    S.layers.push(mkEffect('Blink', lo, hi, {c1:parseHex($('#pxColor').value), c2:[0,0,0], speedQ:10, bpmQ:120}));
+    S.selLayer=S.layers.length-1; renderLayers(); push();
+    $$('#tabs .tab')[2].click();
+  };
+  $('#btnPxClear').onclick = ()=>{ S.layers=S.layers.filter(l=>l.type!=='pixels');
+    S.px=S.px.map(()=>[0,0,0]); renderLayers(); buildGrid(); push(); };
+
+  /* effects: the editor writes live into the selected layer */
+  $('#fxSel').onchange = ()=>{ const L=S.layers[S.selLayer]; if (!L || L.type==='pixels') return;
+    L.type='effect'; L.effect=+$('#fxSel').value; renderLayers(); push(); };
+  $('#fxC1').oninput = ()=>{ const L=S.layers[S.selLayer]; if (L){ L.c1=parseHex($('#fxC1').value); push(); } };
+  $('#fxC2').oninput = ()=>{ const L=S.layers[S.selLayer]; if (L){ L.c2=parseHex($('#fxC2').value); push(); } };
+  $('#rngFrom').oninput = ()=>{ const L=S.layers[S.selLayer]; if (L){ L.start=clamp(+$('#rngFrom').value,0,S.leds-1); push(); } };
+  $('#rngTo').oninput = ()=>{ const L=S.layers[S.selLayer]; if (L){ L.end=clamp(+$('#rngTo').value,0,S.leds-1); push(); } };
+  $('#fxBlend').onchange = ()=>{ const L=S.layers[S.selLayer]; if (L){ L.blend=+$('#fxBlend').value; renderLayers(); push(); } };
+  $('#fxSpd').oninput = e=>{ $('#vFxSpd').textContent=(e.target.value/10).toFixed(1)+'\u00d7'; const L=S.layers[S.selLayer]; if (L){ L.speedQ=+e.target.value; push(); } };
+  $('#fxBpm').oninput = e=>{ $('#vFxBpm').textContent=e.target.value; const L=S.layers[S.selLayer]; if (L){ L.bpmQ=+e.target.value; push(); } };
+  $('#btnFxAdd').onclick = ()=>addFxLayer(FX[+$('#fxSel').value], { c1:parseHex($('#fxC1').value), c2:parseHex($('#fxC2').value), speedQ:+$('#fxSpd').value, bpmQ:+$('#fxBpm').value, blend:+$('#fxBlend').value, start:+$('#rngFrom').value, end:+$('#rngTo').value });
+  $('#btnRangeFromSel').onclick = ()=>{ if (!S.sel.size) return; $('#rngFrom').value=Math.min(...S.sel); $('#rngTo').value=Math.max(...S.sel); const L=S.layers[S.selLayer]; if (L){ L.start=+$('#rngFrom').value; L.end=+$('#rngTo').value; } renderLayers(); push(); };
+  $('#btnRangeSplit').onclick = ()=>{
+    S.layers.push(mkEffect('Chase',0,S.leds-1,{c1:parseHex($('#fxC1').value), speedQ:+$('#fxSpd').value}));
+    S.layers.push(mkEffect('Chase',1,S.leds-1,{c1:parseHex($('#fxC2').value), speedQ:+$('#fxSpd').value, blend:1}));
+    S.selLayer=S.layers.length-1; renderLayers(); push();
+  };
+  $('#btnOverlayAdd').onclick = ()=>addFxLayer('Comet',{c1:parseHex('#ffffff'), blend:1, speedQ:12});
+  $('#btnOverlayScreen').onclick = ()=>addFxLayer('Breathe',{c1:parseHex('#2266ff'), blend:2, bpmQ:30});
+  $$('[data-preset]').forEach(b=>b.onclick=()=>{
+    const map = { rainbowCycle:mkEffect('Rainbow cycle',0,S.leds-1,{speedQ:6}),
+                  theater:mkEffect('Theatre chase',0,S.leds-1,{c1:parseHex('#ff0000'),c2:parseHex('#000000')}),
+                  dualscan:mkEffect('Dual scan',0,S.leds-1,{c1:parseHex('#22d3ee')}),
+                  strobe:mkEffect('Strobe',0,S.leds-1,{c1:parseHex('#ffffff'),bpmQ:120}),
+                  meteor:mkEffect('Meteor shower',0,S.leds-1,{c1:parseHex('#ffffff'),c2:parseHex('#ff5500'),blend:1}),
+                  colorfade:mkEffect('Colour fade',0,S.leds-1,{c1:parseHex('#ff0080'),c2:parseHex('#00e5ff'),bpmQ:20}),
+                  fire:mkEffect('Fire',0,S.leds-1,{speedQ:12}) };
+    S.layers.push(map[b.dataset.preset]); S.selLayer=S.layers.length-1;
+    renderLayers(); push();
+  });
+
+  /* layer toolbar */
+  $$('[data-addlayer]').forEach(b=>b.onclick=()=>{
+    const t=b.dataset.addlayer;
+    if (t==='solid') S.layers.push(mkSolid([255,80,0],0,S.leds-1));
+    else if (t==='effect') S.layers.push(mkEffect('Rainbow',0,S.leds-1));
+    else S.layers.push(mkPixels());
+    S.selLayer=S.layers.length-1; renderLayers(); push();
+  });
+  const move = d=>{ const i=S.selLayer; if(i<0) return; const j=i+d; if(j<0||j>=S.layers.length) return;
+                    const t=S.layers[i]; S.layers[i]=S.layers[j]; S.layers[j]=t; S.selLayer=j; renderLayers(); push(); };
+  $('#btnLayerUp').onclick = ()=>move(1);
+  $('#btnLayerDown').onclick = ()=>move(-1);
+  $('#btnLayerDel').onclick = ()=>{ if(S.selLayer>=0){ S.layers.splice(S.selLayer,1); S.selLayer=Math.min(S.selLayer,S.layers.length-1); renderLayers(); push(); } };
+  $('#btnLayerAll').onclick = ()=>{ S.layers=[]; S.selLayer=-1; renderLayers(); push(); };
+
+  /* timeline */
+  $('#btnSnap').onclick = snapshotFrame;
+  $('#btnTlClear').onclick = ()=>{ S.timeline=[]; S.curStep=-1; stepIdx=-1; renderTimeline(); updateBudget(); };
+  $('#btnTlSend').onclick = ()=>{ pushTimeline(); };
+  $('#btnSave').onclick = ()=>{ wsSend('x'); };
+  $('#btnDiag').onclick = ()=>{ wsSend('d'); log('sy','asked the board to print diagnostics to Serial'); };
+  $('#btnErase').onclick = ()=>{ if(confirm('Erase the stored config on the device?')) wsSend('F'); };
+  $('#btnPush').onclick = ()=>{ pushAll(); S.mode='live'; log('sy','pushed stack ('+S.layers.length+' layers)'); };
+  $('#btnPushShow').onclick = ()=>{ pushTimeline(); };
+  $('#btnSend').onclick = ()=>{ pushGlobals(); pushLayers(); if(S.timeline.length) pushTimeline(); sendPlay(1);
+                                $('#status').textContent='sent to device at '+new Date().toLocaleTimeString('en-GB',{hour12:false}); };
+  $('#btnSendStream').onclick = ()=>{ $('#btnSend').click(); setStream(true); playing=true; };
+  $('#btnMonClear').onclick = ()=>{ $('#mon').innerHTML=''; };
+  $('#btnExport').onclick = exportJson;
+  $('#btnImport').onclick = ()=> $('#fileImport').click();
+  $('#fileImport').onchange = importJson;
+
+  $('#pxScope').onchange = ()=>{};
+
+  /* keyboard */
+  window.addEventListener('keydown', e=>{
+    if (/input|select|textarea/i.test(e.target.tagName)) return;
+    if (e.code==='Space'){ e.preventDefault(); playing=!playing; sendPlay(playing?1:2); }
+    else if (e.key==='s'||e.key==='S'){ snapshotFrame(); }
+    else if (e.key==='p'||e.key==='P'){ $('#btnPush').click(); }
+    else if (/^[0-9]$/.test(e.key)){ const i=+e.key; if(i<S.leds){ S.sel=new Set([i]); syncSel(); buildGrid(); renderLayers(); } }
+    else if (e.key==='a'){ $('#btnPxSelAll').click(); }
+  });
+}
+function sendPlay(action){ wsSend('s', new Uint8Array([action])); }
+function sendStep(i){ /* choosing a step in the preview also nudges the device */
+  wsSend('s', new Uint8Array([3]));
+}
+
+/* ------------------------------ import/export --------------------------- */
+function exportJson(){
+  const doc = {
+    v:1, leds:S.leds, pin:S.pin, brightness:S.brightness, gspdQ:S.gspdQ, fps:S.fps, masterOn:S.masterOn,
+    px:S.px,
+    layers:S.layers.map(L=>({ ...L, pixels: L.pixels? Array.from(L.pixels):null,
+      c1:L.c1, c2:L.c2 })),
+    timeline:S.timeline.map(s=>({ ms:s.ms, runs:s.runs })),
+    palette:S.palette
+  };
+  const a=document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(doc,null,1)],{type:'application/json'}));
+  a.download = 'neopixel-show.json'; a.click();
+  log('sy','exported JSON');
+}
+function importJson(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload = ()=>{
+    try{
+      const d=JSON.parse(r.result);
+      S.leds=d.leds||16; S.pin=d.pin??4; S.brightness=d.brightness??60; S.gspdQ=d.gspdQ??10;
+      S.fps=d.fps??25; S.masterOn=d.masterOn!==false;
+      S.px=d.px||new Array(S.leds).fill(0).map(()=>[0,0,0]);
+      S.layers=(d.layers||[]).map(L=>({...L, pixels:L.pixels? Uint8Array.from(L.pixels):null}));
+      S.timeline=d.timeline||[]; S.palette=d.palette||S.palette;
+      $('#nLeds').value=S.leds; $('#nPin').value=S.pin; $('#rBright').value=S.brightness;
+      $('#vBright').textContent=S.brightness; $('#rGspd').value=S.gspdQ; $('#rFps').value=S.fps;
+      buildStrip(); buildGrid(); syncSel(); renderLayers(); renderTimeline();
+      log('sy','imported '+(d.layers||[]).length+' layers, '+S.timeline.length+' steps');
+    }catch(err){ alert('Bad JSON: '+err.message); }
+  };
+  r.readAsText(f);
+}
+
+/* ---------------- simple mode: big buttons for kids ---------------- */
+const SIM_FX = [
+  ['Rainbow','Rainbow cycle',6], ['Comet','Comet',8], ['Fire','Fire',12],
+  ['Sparkle','Sparkle',10], ['Breathe','Breathe',10], ['Chase','Chase',10],
+  ['Theatre','Theatre chase',10], ['Wipe','Colour wipe',10],
+  ['Strobe','Strobe',10], ['Meteor','Meteor shower',10],
+  ['Fade','Colour fade',20], ['Glow','Gradient',10]
+];
+const SIM_DOT = { 'Rainbow cycle':'#ff8800','Comet':'#22d3ee','Fire':'#ff5511',
+  'Sparkle':'#ffee55','Breathe':'#4ade80','Chase':'#818cf8','Theatre chase':'#ff3b30',
+  'Colour wipe':'#00ffff','Strobe':'#ffffff','Meteor shower':'#ff8800',
+  'Colour fade':'#ff0080','Gradient':'#c084fc' };
+(function(){
+  const host = $('#fxBtns'); if (!host) return;
+  SIM_FX.forEach((entry)=>{
+    const label = entry[0], fx = entry[1], spd = entry[2];
+    const b = document.createElement('button');
+    b.className = 'fxbtn';
+    b.innerHTML = '<i style="background:'+SIM_DOT[fx]+';color:'+SIM_DOT[fx]+'"></i>'+label;
+    b.onclick = ()=>{
+      const col = parseHex($('#simColor').value);
+      S.layers = [ mkEffect(fx, 0, S.leds-1, { c1: col, c2: [0,0,0], speedQ: spd }) ];
+      S.selLayer = 0; S.playing = true;
+      S.curStep=-1; stepIdx=-1; stepAccum=0; if (S.streaming) setStream(false); wsSend('t', new Uint8Array([0,0,0])); markTimeline();
+      renderLayers(); push();
+      log('sy','simple: '+label);
+    };
+    host.appendChild(b);
+  });
+})();
+$('#rSimBright').oninput = e=>{
+  S.brightness = +e.target.value;
+  $('#vSimBright').textContent = S.brightness;
+  $('#rBright').value = S.brightness; $('#vBright').textContent = S.brightness;
+  pushGlobals();
+};
+$('#rSimSpd').oninput = e=>{
+  S.gspdQ = +e.target.value;
+  $('#vSimSpd').textContent = (S.gspdQ/10).toFixed(1)+'\u00d7';
+  $('#rGspd').value = S.gspdQ; $('#vGspd').textContent = (S.gspdQ/10).toFixed(2)+'\u00d7';
+  pushGlobals();
+};
+$('#btnSimWhite').onclick = ()=>{
+  S.layers = [ mkSolid([255,255,255],0,S.leds-1) ]; S.selLayer = 0; S.playing = true;
+  S.curStep=-1; stepIdx=-1; stepAccum=0; if (S.streaming) setStream(false); wsSend('t', new Uint8Array([0,0,0])); markTimeline();
+  renderLayers(); push();
+};
+$('#btnSimOff').onclick = ()=>{
+  S.px = S.px.map(()=>[0,0,0]); S.layers = []; S.selLayer = -1;
+  S.curStep=-1; stepIdx=-1; stepAccum=0; if (S.streaming) setStream(false); wsSend('t', new Uint8Array([0,0,0])); markTimeline();
+  renderLayers(); buildGrid(); push();
+};
+function setMode(simple, save){
+  document.body.classList.toggle('simple', simple);
+  $('#btnSimple').classList.toggle('on', simple);
+  $('#btnAdv').classList.toggle('on', !simple);
+  $('#rSimBright').value = S.brightness;
+  $('#vSimBright').textContent = S.brightness;
+  $('#rSimSpd').value = S.gspdQ;
+  $('#vSimSpd').textContent = (S.gspdQ/10).toFixed(1)+'\u00d7';
+  if (save){ try{ localStorage.setItem('nps-mode', simple?'simple':'adv'); }catch(err){} }
+}
+$('#btnSimple').onclick = ()=>setMode(true,true);
+$('#btnAdv').onclick = ()=>setMode(false,true);
+let simMode = 'simple';
+try{ simMode = localStorage.getItem('nps-mode')||'simple'; }catch(err){}
+setMode(simMode !== 'adv', false);
+
+/* ==========================================================================
+ * AI chat - plain English -> effect stack (Simple mode)
+ *
+ * Everything runs in the browser: the page talks to the chosen provider's
+ * HTTPS API directly (BYOK - the key never leaves localStorage here), because
+ * the ESP8266 can neither keep a TLS session to a big API nor spare the RAM
+ * to proxy one. The model replies with a small JSON plan that is converted
+ * into layers and applied exactly like the Simple-mode buttons do.
+ * ========================================================================== */
+const AI_PROVIDERS = {
+  openai:      { label:'OpenAI',                    base:'https://api.openai.com/v1',                              model:'gpt-4o-mini',                                     models:true },
+  anthropic:   { label:'Anthropic (Claude)',        base:'https://api.anthropic.com',                              model:'claude-3-5-haiku-latest',                         models:true,  kind:'anthropic' },
+  gemini:      { label:'Google Gemini',             base:'https://generativelanguage.googleapis.com/v1beta/openai',model:'gemini-2.0-flash',                                models:true },
+  deepinfra:   { label:'DeepInfra',                 base:'https://api.deepinfra.com/v1/openai',                    model:'meta-llama/Llama-3.3-70B-Instruct',               models:true },
+  openrouter:  { label:'OpenRouter',                base:'https://openrouter.ai/api/v1',                           model:'openai/gpt-4o-mini',                              models:true },
+  groq:        { label:'Groq',                      base:'https://api.groq.com/openai/v1',                         model:'llama-3.3-70b-versatile',                         models:true },
+  mistral:     { label:'Mistral AI',                base:'https://api.mistral.ai/v1',                              model:'mistral-small-latest',                            models:true },
+  deepseek:    { label:'DeepSeek',                  base:'https://api.deepseek.com/v1',                            model:'deepseek-chat',                                   models:true },
+  xai:         { label:'xAI (Grok)',                base:'https://api.x.ai/v1',                                    model:'grok-3-mini',                                     models:true },
+  together:    { label:'Together AI',               base:'https://api.together.xyz/v1',                            model:'meta-llama/Llama-3.3-70B-Instruct-Turbo',         models:true },
+  fireworks:   { label:'Fireworks AI',              base:'https://api.fireworks.ai/inference/v1',                  model:'accounts/fireworks/models/llama-v3p3-70b-instruct',models:true },
+  cerebras:    { label:'Cerebras',                  base:'https://api.cerebras.ai/v1',                             model:'llama-3.3-70b',                                   models:true },
+  perplexity:  { label:'Perplexity',                base:'https://api.perplexity.ai',                              model:'sonar',                                           models:false },
+  cohere:      { label:'Cohere',                    base:'https://api.cohere.ai/compatibility/v1',                 model:'command-r7b-12-2024',                             models:true },
+  huggingface: { label:'Hugging Face Router',       base:'https://router.huggingface.co/v1',                       model:'meta-llama/Llama-3.3-70B-Instruct',               models:true },
+  nvidia:      { label:'NVIDIA NIM',                base:'https://integrate.api.nvidia.com/v1',                    model:'meta/llama-3.3-70b-instruct',                     models:true },
+  dashscope:   { label:'Alibaba Cloud (Qwen)',      base:'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', model:'qwen-plus',                                       models:true },
+  moonshot:    { label:'Moonshot AI (Kimi)',        base:'https://api.moonshot.ai/v1',                             model:'moonshot-v1-8k',                                  models:true },
+  zhipu:       { label:'Zhipu AI (GLM)',            base:'https://open.bigmodel.cn/api/paas/v4',                   model:'glm-4-flash',                                     models:true },
+  yi:          { label:'01.AI (Yi)',                base:'https://api.lingyiwanwu.com/v1',                         model:'yi-lightning',                                    models:true },
+  azure:       { label:'Azure OpenAI',              base:'https://YOUR-RESOURCE.openai.azure.com/openai/v1',       model:'gpt-4o-mini',                                     models:true,  kind:'azure' },
+  ollama:      { label:'Ollama (local)',            base:'http://localhost:11434/v1',                              model:'llama3.2',                                        models:true,  nokey:true },
+  lmstudio:    { label:'LM Studio (local)',         base:'http://localhost:1234/v1',                               model:'',                                                models:true,  nokey:true },
+  custom:      { label:'Custom (OpenAI-compatible)',base:'',                                                       model:'',                                                models:true,  nokey:true }
+};
+const AI_EXAMPLES = [
+  'light 1st 8 leds in red, next 8 in blue',
+  'blink 1-4 leds in red with 1 seconds delay, blink rest in yellow with 3 seconds delay',
+  'light 1st 6 leds with red, next 4 in yellow, last 6 in red'
+];
+const AI_CORS_HINT = 'If this is a CORS/network error, the provider blocks direct browser calls - ' +
+  'OpenAI, DeepInfra, OpenRouter, Groq, Mistral, Together, Cerebras, Gemini and local Ollama/LM Studio are known to work.';
+
+function aiLoadCfg(){
+  try { return JSON.parse(localStorage.getItem('nps-ai')) || {}; } catch(err){ return {}; }
+}
+function aiSaveCfg(){ try{ localStorage.setItem('nps-ai', JSON.stringify(AI_CFG)); }catch(err){} }
+const AI_CFG = aiLoadCfg();
+AI_CFG.keys = AI_CFG.keys || {}; AI_CFG.models = AI_CFG.models || {}; AI_CFG.bases = AI_CFG.bases || {};
+if (!AI_CFG.provider) AI_CFG.provider = 'deepinfra';
+
+let aiHistory = [];          // [{role:'user'|'assistant', content}]
+let aiBusy = false;
+
+function aiEffective(){
+  const p = AI_PROVIDERS[AI_CFG.provider] || AI_PROVIDERS.deepinfra;
+  return {
+    id: AI_CFG.provider, p,
+    base: (AI_CFG.bases[AI_CFG.provider] || p.base || '').replace(/\/+$/,''),
+    model: AI_CFG.models[AI_CFG.provider] || p.model || '',
+    key: AI_CFG.keys[AI_CFG.provider] || ''
+  };
+}
+function aiConfigured(){
+  const e = aiEffective();
+  return !!e.base && !!e.model && (!!e.key || e.p.nokey);
+}
+function aiUpdateTag(){
+  const t = $('#aiProvTag'); if (!t) return;
+  if (!aiConfigured()){ t.textContent = 'not configured'; t.className = 'tag'; return; }
+  const e = aiEffective();
+  t.textContent = e.p.label + ' \u00b7 ' + e.model;
+  t.className = 'tag c';
+}
+
+/* ------------------------------ the prompt ------------------------------- */
+function aiSystemPrompt(){
+  const n = S.leds;
+  return 'You are the show planner inside NeoPixel Studio, a controller for a strip of ' + n +
+    ' WS2812B LEDs, indexed 0..' + (n-1) + '. The user describes a light show in plain language. ' +
+    'Reply with ONE JSON object and NOTHING else - no markdown, no code fences.\n' +
+    'Schema:\n' +
+    '{"reply":"1-3 short friendly sentences (what you built, or the answer)","brightness":0-255(optional),' +
+    '"globalSpeed":0.1-4.0(optional),"layers":[{"kind":"solid","c1":"#rrggbb","start":0,"end":7},\n' +
+    '{"kind":"effect","effect":"<name>","c1":"#rrggbb","c2":"#rrggbb","start":0,"end":' + (n-1) + ',"speed":1.0,"bpm":30,"blend":"over"},\n' +
+    '{"kind":"pixels","colors":["#rrggbb",...one per LED in range],"start":0,"end":' + (n-1) + '}]}\n' +
+    'Effects (use these exact names): Solid, Blink, Breathe, Rainbow, Rainbow cycle, Chase, Comet, ' +
+    'Theatre chase, Colour wipe, Sparkle, Fire, Gradient, Dual scan, Strobe, Meteor shower, Colour fade.\n' +
+    'Timing: Blink full on/off period = 30/bpm seconds (bpm 30 = 1 s, bpm 10 = 3 s, bpm 60 = 0.5 s; on half the time). ' +
+    'Strobe flash \u2248 0.12*(60/bpm) s. Breathe period = 60/bpm s. Colour wipe fill cycle = 60/bpm s. ' +
+    'Colour fade c1<->c2 cycle = 120/bpm s. speed multiplies motion tempo (1.0 = normal; keep 1.0 when the user ' +
+    'names an exact delay, so bpm alone sets the timing). Omit bpm for effects that do not need it.\n' +
+    'Rules: ranges are 0-based and INCLUSIVE; use one layer per LED group; ranges must stay within 0..' + (n-1) + '. ' +
+    'Layers composite top-down: a later layer overwrites earlier ones where they overlap, unless blend is ' +
+    '"add" or "screen" (glows on top of what is below) or "multiply" (darkens). ' +
+    '"pixels" paints exact per-LED colours - best for fixed multi-colour patterns (alternating colours, stripes); ' +
+    'if colors has fewer entries than the range, it repeats. c2 is the secondary/background colour (black = off). ' +
+    'When the user groups LEDs ("first 8", "middle", "last 6"), translate that to indexes. ' +
+    'If the user asks a question or just chats, answer in "reply" and omit "layers". ' +
+    'Include "brightness" ONLY when the user names a brightness level or percentage ("half brightness", "at 80%"): ' +
+    'a percentage p maps to Math.round(p*2.55). Otherwise omit it - the studio applies a 25% default. ' +
+    'Never wrap the JSON in backticks.';
+}
+
+/* --------------------------- provider adapters --------------------------- */
+function aiAuthHeaders(e, json){
+  const h = { 'Content-Type':'application/json' };
+  if (e.p.kind === 'anthropic'){
+    h['x-api-key'] = e.key;
+    h['anthropic-version'] = '2023-06-01';
+    h['anthropic-dangerous-direct-browser-access'] = 'true';
+  } else if (e.p.kind === 'azure'){
+    h['api-key'] = e.key;
+  } else if (e.key){
+    h['Authorization'] = 'Bearer ' + e.key;
+  }
+  if (e.id === 'openrouter'){ h['X-Title'] = 'NeoPixel Studio'; }
+  return h;
+}
+async function aiFetchJson(e, path, opts, timeoutMs){
+  const ctl = new AbortController();
+  const timer = setTimeout(()=>ctl.abort(), timeoutMs || 90000);
+  try {
+    const res = await fetch(e.base + path, Object.assign({ signal: ctl.signal }, opts));
+    const txt = await res.text();
+    if (!res.ok){
+      let msg = 'HTTP ' + res.status;
+      try { const j = JSON.parse(txt); msg += ': ' + (j.error && (j.error.message || j.error.type) || JSON.stringify(j.error) || JSON.stringify(j)).slice(0,300); }
+      catch(err){ msg += ': ' + txt.slice(0,300); }
+      throw new Error(msg);
+    }
+    return JSON.parse(txt);
+  } finally { clearTimeout(timer); }
+}
+/* Sends the conversation; returns the assistant text. */
+async function aiChat(e, sysText){
+  const msgs = [{ role:'system', content: sysText }, ...aiHistory];
+  let text;
+  if (e.p.kind === 'anthropic'){
+    const body = { model: e.model, max_tokens: 1024, system: sysText,
+                   messages: aiHistory.map(m=>({ role:m.role, content:m.content })) };
+    const j = await aiFetchJson(e, '/v1/messages', { method:'POST', headers: aiAuthHeaders(e), body: JSON.stringify(body) });
+    text = (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+  } else {
+    const body = { model: e.model, messages: msgs, temperature: 0.2, max_tokens: 1024, stream: false };
+    const j = await aiFetchJson(e, '/chat/completions', { method:'POST', headers: aiAuthHeaders(e), body: JSON.stringify(body) });
+    const ch = j.choices && j.choices[0];
+    text = (ch && ch.message && ch.message.content) || (ch && ch.text) || '';
+  }
+  return String(text||'').trim();
+}
+async function aiListModels(){
+  const e = aiEffective();
+  if (!e.p.models) throw new Error('this provider has no model list - type the model name');
+  if (!e.base) throw new Error('set the base URL first');
+  let j;
+  if (e.p.kind === 'anthropic'){
+    j = await aiFetchJson(e, '/v1/models', { headers: aiAuthHeaders(e) }, 20000);
+  } else {
+    j = await aiFetchJson(e, '/models', { headers: aiAuthHeaders(e) }, 20000);
+  }
+  const arr = (j.data || j.models || []).map(m => m.id || m.name || '').filter(Boolean);
+  arr.sort();
+  return arr;
+}
+
+/* ---------------------- plan -> layers -> apply -------------------------- */
+function aiResolveEffect(name){
+  const want = String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const alias = { solid:'Solid', blink:'Blink', breathe:'Breathe', rainbow:'Rainbow',
+    rainbowcycle:'Rainbow cycle', cycle:'Rainbow cycle', chase:'Chase', comet:'Comet',
+    theatre:'Theatre chase', theater:'Theatre chase', theatrechase:'Theatre chase',
+    colorwipe:'Colour wipe', colourwipe:'Colour wipe', wipe:'Colour wipe',
+    sparkle:'Sparkle', fire:'Fire', gradient:'Gradient', dualscan:'Dual scan',
+    strobe:'Strobe', meteor:'Meteor shower', meteorshower:'Meteor shower',
+    colorfade:'Colour fade', colourfade:'Colour fade', fade:'Colour fade' };
+  if (alias[want]) return alias[want];
+  for (const n of FX){ if (n.toLowerCase().replace(/[^a-z0-9]/g,'') === want) return n; }
+  return null;
+}
+function aiBlendIdx(b){
+  const i = BLENDS.indexOf(String(b||'over').toLowerCase());
+  return i < 0 ? 0 : i;
+}
+function layerFromAiSpec(spec){
+  if (!spec || typeof spec !== 'object') return null;
+  const start = clamp(Math.round(+spec.start || 0), 0, S.leds-1);
+  const end   = clamp(Math.round(spec.end != null ? +spec.end : S.leds-1), 0, S.leds-1);
+  const c1 = parseHex(spec.c1 || '#ff0000');
+  const c2 = parseHex(spec.c2 || '#000000');
+  const speedQ = clamp(Math.round((+spec.speed || 1) * 10), 1, 40);
+  const bpmQ   = clamp(Math.round((+spec.bpm || 60) / 10), 1, 255);
+  const blend  = aiBlendIdx(spec.blend);
+  const kind = String(spec.kind || 'effect').toLowerCase();
+
+  if (kind === 'solid'){
+    return mkSolid(c1, start, end, { blend });
+  }
+  if (kind === 'pixels' || Array.isArray(spec.colors)){
+    const L = mkPixels({ start, end, blend });
+    let cols = (spec.colors || [spec.c1]).map(x => Array.isArray(x) ? x.map(clamp255) : parseHex(x))
+                .filter(c => c && (c[0]||c[1]||c[2]));
+    if (!cols.length) cols = [c1];
+    for (let i = start; i <= end; i++){
+      const c = cols[(i - start) % cols.length];
+      L.pixels[i*3] = c[0]; L.pixels[i*3+1] = c[1]; L.pixels[i*3+2] = c[2];
+    }
+    return L;
+  }
+  const name = aiResolveEffect(spec.effect);
+  if (!name) return null;
+  return mkEffect(name, start, end, { c1, c2, speedQ, bpmQ, blend });
+}
+function aiCloneLayers(){
+  return S.layers.map(L=>{
+    const cp = JSON.parse(JSON.stringify(L, (k,v)=> v instanceof Uint8Array ? Array.from(v) : v));
+    if (cp.pixels) cp.pixels = Uint8Array.from(cp.pixels);
+    return cp;
+  });
+}
+/* Applies the plan the same way the Simple-mode buttons do: replaces the
+   stack, drops any recorded show, mirrors pixel layers into S.px.
+   Multiple "pixels" specs merge into ONE pixel layer because the device
+   protocol ('l' blob) carries pixel data for a single pixel layer. */
+function applyAiPlan(plan){
+  const layers = [];
+  let pxLayer = null;                 // merged pixel layer, placed at first spec
+  for (const spec of (plan.layers||[])){
+    if (layers.length >= MAX_LAYERS) break;
+    const kind = String((spec && spec.kind) || 'effect').toLowerCase();
+    const isPixels = kind === 'pixels' || Array.isArray(spec && spec.colors);
+    if (isPixels){
+      if (!pxLayer){ pxLayer = mkPixels(); layers.push(pxLayer); }
+      const start = clamp(Math.round(+(spec.start||0)), 0, S.leds-1);
+      const end   = clamp(Math.round(spec.end != null ? +spec.end : S.leds-1), 0, S.leds-1);
+      let cols = (spec.colors || [spec.c1]).map(x => Array.isArray(x) ? x.map(clamp255) : parseHex(x))
+                  .filter(c => c && (c[0]||c[1]||c[2]));
+      if (!cols.length) cols = [parseHex(spec.c1 || '#ff0000')];
+      for (let i = start; i <= end; i++){
+        const c = cols[(i - start) % cols.length];
+        pxLayer.start = Math.min(pxLayer.start, start);
+        pxLayer.end   = Math.max(pxLayer.end, end);
+        pxLayer.pixels[i*3] = c[0]; pxLayer.pixels[i*3+1] = c[1]; pxLayer.pixels[i*3+2] = c[2];
+      }
+      continue;
+    }
+    const L = layerFromAiSpec(spec);
+    if (L) layers.push(L);
+  }
+  if (!layers.length) return null;
+  const snap = { layers: aiCloneLayers(), px: S.px.map(c=>c.slice()), selLayer: S.selLayer,
+                 brightness: S.brightness, gspdQ: S.gspdQ };
+  S.layers = layers; S.selLayer = 0;
+  S.playing = true;
+  S.curStep = -1; stepIdx = -1; stepAccum = 0;
+  if (S.streaming) setStream(false);
+  wsSend('t', new Uint8Array([0,0,0])); markTimeline();
+  if (plan.brightness != null && isFinite(+plan.brightness)){
+    S.brightness = clamp(Math.round(+plan.brightness), 0, 255);
+  } else {
+    S.brightness = 64;    // 25% of 255: AI effects land easy on the eyes unless the user names a level
+  }
+  $('#rBright').value = S.brightness; $('#vBright').textContent = S.brightness;
+  $('#rSimBright').value = S.brightness; $('#vSimBright').textContent = S.brightness;
+  if (plan.globalSpeed != null && isFinite(+plan.globalSpeed)){
+    S.gspdQ = clamp(Math.round(+plan.globalSpeed * 10), 1, 40);
+    $('#rGspd').value = S.gspdQ; $('#vGspd').textContent = (S.gspdQ/10).toFixed(2)+'\u00d7';
+    $('#rSimSpd').value = S.gspdQ; $('#vSimSpd').textContent = (S.gspdQ/10).toFixed(1)+'\u00d7';
+  }
+  const px = layers.find(l=>l.type==='pixels');
+  if (px){ for (let i=0;i<S.leds;i++) S.px[i] = [px.pixels[i*3], px.pixels[i*3+1], px.pixels[i*3+2]]; }
+  renderLayers(); buildGrid(); pushGlobals(); push();
+  return snap;
+}
+function aiDescribeLayers(layers){
+  return layers.map(L=>{
+    const what = (L.type==='solid') ? 'Solid ' + toHex(L.c1)
+               : (L.type==='pixels') ? 'Pixel colours'
+               : FX[L.effect] + ' ' + toHex(L.c1);
+    return what + ' \u00b7 LEDs ' + L.start + '-' + L.end;
+  });
+}
+/* Pulls the first JSON object out of a reply (models love to chat around it). */
+function aiExtractJson(text){
+  const t = text.replace(/```(?:json)?/gi, '').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a < 0 || b <= a) return null;
+  try { return JSON.parse(t.slice(a, b+1)); } catch(err){ return null; }
+}
+
+/* ------------------------------- chat UI --------------------------------- */
+function aiAddMsg(cls, text){
+  const host = $('#aiLog');
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  if (text) d.textContent = text;
+  host.appendChild(d);
+  host.scrollTop = host.scrollHeight;
+  return d;
+}
+function aiErrText(err){
+  if (err && err.name === 'AbortError') return 'Timed out waiting for the AI (90 s). Try again, or pick a faster model.';
+  if (err instanceof TypeError) return 'Network or CORS error: ' + (err.message||'request blocked') + '. ' + AI_CORS_HINT;
+  return (err && err.message) ? err.message : String(err);
+}
+function aiHandleReply(raw){
+  aiHistory.push({ role:'assistant', content: raw });
+  if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
+  const plan = aiExtractJson(raw);
+  const d = aiAddMsg('ai', '');
+  if (plan && (plan.layers || plan.reply != null)){
+    d.textContent = String(plan.reply || 'Here you go!').trim() || 'Here you go!';
+    if (plan.layers && plan.layers.length){
+      const snap = applyAiPlan(plan);
+      if (snap){
+        const box = document.createElement('div'); box.className = 'applied';
+        const t = document.createElement('span');
+        t.className = 'tag g';
+        t.textContent = 'applied ' + S.layers.length + ' layer' + (S.layers.length>1?'s':'') + ': ' +
+                        aiDescribeLayers(S.layers).join('  |  ');
+        const undo = document.createElement('button');
+        undo.className = 'btn sm';
+        undo.textContent = 'Undo';
+        undo.onclick = ()=>{
+          S.layers = snap.layers; S.selLayer = snap.selLayer;
+          S.px = snap.px.map(c=>c.slice());
+          S.brightness = snap.brightness; S.gspdQ = snap.gspdQ;
+          $('#rBright').value = S.brightness; $('#vBright').textContent = S.brightness;
+          $('#rSimBright').value = S.brightness; $('#vSimBright').textContent = S.brightness;
+          $('#rGspd').value = S.gspdQ; $('#vGspd').textContent = (S.gspdQ/10).toFixed(2)+'\u00d7';
+          $('#rSimSpd').value = S.gspdQ; $('#vSimSpd').textContent = (S.gspdQ/10).toFixed(1)+'\u00d7';
+          renderLayers(); buildGrid(); pushGlobals(); push();
+          undo.disabled = true; undo.textContent = 'undone';
+        };
+        box.append(t, undo);
+        d.appendChild(box);
+      } else {
+        d.appendChild(Object.assign(document.createElement('div'),
+          { className:'hint', textContent:'I could not turn that into layers - try rephrasing.' }));
+      }
+    }
+  } else {
+    d.textContent = raw || '(empty reply)';
+  }
+  const host = $('#aiLog'); host.scrollTop = host.scrollHeight;
+}
+async function aiSend(text){
+  text = String(text||'').trim();
+  if (!text || aiBusy) return;
+  if (!aiConfigured()){
+    aiAddMsg('err', 'Pick a provider, model and API key in AI settings first (works with DeepInfra, OpenAI, Claude, Gemini, Groq, OpenRouter, local Ollama and more).');
+    aiOpenSettings();
+    return;
+  }
+  aiBusy = true; $('#btnAiSend').disabled = true;
+  aiAddMsg('user', text);
+  aiHistory.push({ role:'user', content: text });
+  if (aiHistory.length > 12) aiHistory = aiHistory.slice(-12);
+  const typing = aiAddMsg('ai', '');
+  typing.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+  try {
+    const reply = await aiChat(aiEffective(), aiSystemPrompt());
+    typing.remove();
+    aiHandleReply(reply);
+  } catch(err){
+    typing.remove();
+    aiAddMsg('err', aiErrText(err));
+  }
+  aiBusy = false; $('#btnAiSend').disabled = false;
+  const host = $('#aiLog'); host.scrollTop = host.scrollHeight;
+}
+
+/* --------------------------- settings modal ------------------------------ */
+function aiFillProviderSelect(){
+  const sel = $('#aiProvider'); sel.innerHTML = '';
+  for (const [id,p] of Object.entries(AI_PROVIDERS)){
+    const o = document.createElement('option'); o.value = id; o.textContent = p.label;
+    sel.appendChild(o);
+  }
+  sel.value = AI_CFG.provider;
+}
+function aiLoadSettingsForm(){
+  const e = aiEffective();
+  $('#aiProvider').value = AI_CFG.provider;
+  $('#aiModel').value = e.model;
+  $('#aiKey').value = e.key;
+  $('#aiBaseUrl').value = e.base;
+  $('#aiProvHint').textContent = e.p.nokey
+    ? 'No API key needed for this provider.'
+    : 'Default model: ' + (e.p.model || '(type one)') + '. "Load" fetches the live model list from the provider.';
+}
+function aiStashForm(){
+  const id = AI_CFG.provider;
+  AI_CFG.models[id] = $('#aiModel').value.trim();
+  AI_CFG.keys[id]   = $('#aiKey').value.trim();
+  AI_CFG.bases[id]  = $('#aiBaseUrl').value.trim();
+}
+function aiOpenSettings(){ aiLoadSettingsForm(); $('#aiModal').classList.add('on'); $('#aiKey').focus(); }
+function aiCloseSettings(){ aiStashForm(); aiSaveCfg(); aiUpdateTag(); $('#aiModal').classList.remove('on'); }
+
+/* -------------------------------- init ----------------------------------- */
+(function aiInit(){
+  const host = $('#aiExamples'); if (!host) return;
+  AI_EXAMPLES.forEach(x=>{
+    const c = document.createElement('button');
+    c.className = 'chip'; c.textContent = x;
+    c.title = x;
+    c.onclick = ()=>{ $('#aiInput').value = x; $('#aiInput').focus(); };
+    host.appendChild(c);
+  });
+  aiFillProviderSelect();
+  aiUpdateTag();
+
+  $('#btnAiSend').onclick = ()=>{ const v = $('#aiInput').value; $('#aiInput').value=''; aiSend(v); };
+  $('#aiInput').addEventListener('keydown', e=>{
+    if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); const v = $('#aiInput').value; $('#aiInput').value=''; aiSend(v); }
+  });
+  $('#btnAiClear').onclick = ()=>{ aiHistory = []; $('#aiLog').innerHTML = ''; };
+  $('#btnAiSettings').onclick = aiOpenSettings;
+  $('#btnAiSave').onclick = aiCloseSettings;
+  $('#btnAiClose').onclick = aiCloseSettings;
+  $('#aiModal').addEventListener('click', e=>{ if (e.target === $('#aiModal')) aiCloseSettings(); });
+  $('#aiProvider').onchange = ()=>{ aiStashForm(); AI_CFG.provider = $('#aiProvider').value; aiLoadSettingsForm(); };
+  $('#aiModel').onchange   = ()=>aiStashForm();
+  $('#aiKey').onchange     = ()=>aiStashForm();
+  $('#aiBaseUrl').onchange = ()=>aiStashForm();
+  $('#btnAiModels').onclick = async ()=>{
+    const btn = $('#btnAiModels'), hint = $('#aiProvHint');
+    aiStashForm();
+    btn.disabled = true; const old = btn.textContent; btn.textContent = '...';
+    try {
+      const ids = await aiListModels();
+      const dl = $('#aiModelList'); dl.innerHTML = '';
+      const cur = $('#aiModel').value;
+      for (const id of ids.slice(0, 500)){
+        const o = document.createElement('option'); o.value = id; dl.appendChild(o);
+      }
+      if (cur && !ids.includes(cur)){
+        const o = document.createElement('option'); o.value = cur; dl.appendChild(o);
+      }
+      hint.textContent = 'loaded ' + ids.length + ' models - click the model field to pick one';
+    } catch(err){
+      hint.textContent = 'could not list models (' + aiErrText(err) + ') - just type the model name';
+    }
+    btn.disabled = false; btn.textContent = old;
+  };
+
+  if (!aiConfigured()){
+    aiAddMsg('ai', 'Hi! Tell me what the LEDs should do and I will build the show - for example "light 1st 8 leds in red, next 8 in blue". ' +
+      'First, pick a provider and paste your API key in AI settings (DeepInfra, OpenAI, Claude, Gemini, Groq, OpenRouter, local Ollama and many more).');
+  }
+})();
+
+
+/* -------------------------------- boot ---------------------------------- */
+/* When the page is served BY the board, its own address is the only sensible
+   WebSocket endpoint, so connect without making the user press anything. That
+   also means a connection problem shows up immediately instead of looking like
+   an idle UI. */
+const auto = wsUrlAuto();
+$('#wsUrl').value = auto || wsUrlDefault();
+fillFxSelect(); buildFxChips();
+buildStrip(); buildGrid(); syncSel();
+defaultStack();
+renderLayers(); renderTimeline();
+bindUI();
+$('#btnMaster').classList.add('on');
+$('#mon').innerHTML = '';
+log('sy','NeoPixel Studio ready - 16 px on GPIO4');
+log('sy','preview runs locally at 25 fps');
+
+if (auto){
+  log('sy','auto-connecting to ' + auto + ' (served by the board)');
+  setTimeout(connect, 60);
+} else {
+  log('sy','opened from a file or a dev server - press Connect and enter ws://<board-ip>:' + WS_PORT + '/');
+  log('sy','on the board, the Serial Monitor prints the exact WebSocket URL');
+}
+
+</script>
+</body>
