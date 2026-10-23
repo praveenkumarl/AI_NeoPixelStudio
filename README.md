@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![NeoPixel Studio Banner](logo.png)
+<img src="logo.png" width="50%" alt="NeoPixel Studio Banner">
 
   <h3>Lightweight ESP8266 Firmware & Embedded Web UI for WS2812B / NeoPixel LED Strips</h3>
 
