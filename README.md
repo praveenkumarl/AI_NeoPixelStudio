@@ -1,25 +1,44 @@
+# NeoPixel Studio
+
 <p align="center">
   <img src="logo.png" width="450" alt="NeoPixel Studio Logo">
 </p>
 
-# NeoPixel Studio
-
-ESP8266 (NodeMCU ESP-12E) firmware + embedded web UI for WS2812B / NeoPixel strips. The board serves the whole interface from flash and streams live control over a WebSocket.
+<p align="center">
+  <b>ESP8266 (NodeMCU ESP-12E) firmware + embedded web UI for WS2812B / NeoPixel strips.</b><br>
+  The board serves the whole interface from flash and streams live control over a WebSocket.
+</p>
 
 ---
 
-## Interface Screenshots
+## 📸 Interface Modes
 
-| Simple Mode (with AI Chat) | Advanced Mode |
+NeoPixel Studio features two web-based UI modes tailored for quick control or complex customization:
+
+| Simple Mode (with AI Chat) | Advanced Mode (Layer Stack & Controls) |
 | :---: | :---: |
-| <img src="screenshot_simple.png" width="400" alt="Simple Web Interface"> | <img src="screenshot_advanced.png" width="400" alt="Advanced Web Interface"> |
+| <img src="screenshot_simple.png" width="400" alt="Simple Mode Interface"> | <img src="screenshot_advanced.png" width="400" alt="Advanced Mode Interface"> |
+
+### 🟢 Simple Mode
+Designed for effortless control and quick adjustments:
+* **Ask the AI Panel:** Natural language interface to generate multi-layer lighting shows directly via LLM prompts.
+* **Instant Presets:** One-click quick actions and colors for immediate playback.
+* **Live Interactive Preview:** Real-time visual feedback before and during hardware updates.
+* **One-Click Push & Undo:** Instantly send effect plans to the ESP8266 or step back with the built-in undo history.
+
+### ⚙️ Advanced Mode
+Full creative control over the LED strip hardware and animation rendering engine:
+* **Multi-Layer Stack & Blending:** Stack multiple animation effects concurrently with custom blend modes (Over, Add, Multiply, Screen, Mask, etc.).
+* **Fine-Tuned Parameter Controls:** Deep control over color palettes, animation speeds, direction, phase shifts, pixel ranges, and global brightness.
+* **16 Custom Effect Generators:** Includes Rainbow, Color Wipe, Breathing, Sparkle, Fire, Running Light, Theater Chase, Twinkle, Strobe, Solid Color, Custom Pixel Mapping, and more.
+* **Live Pixel-by-Pixel Mapping:** Manually target individual LEDs or sub-ranges across the strip for precision patterns.
 
 ---
 
 ## Repository layout
 
 | File | What it is |
-|---|---|
+| :--- | :--- |
 | `NeoPixelStudio.ino` | Firmware: web server, WebSocket link, effect engine, playback |
 | `web/index.html` | **Source of truth for the web UI** (single file, no build step) |
 | `ui_embedded.h` | Auto-generated: the UI as a PROGMEM C string. Do not edit |
@@ -40,9 +59,9 @@ The Simple tab has an **Ask the AI** panel: describe the show in plain English a
 
 ### Examples:
 
-- "light 1st 8 leds in red, next 8 in blue"
-- "blink 1-4 leds in red with 1 seconds delay, blink rest in yellow with 3 seconds delay"
-- "light 1st 6 leds with red, next 4 in yellow, last 6 in red"
+- *"light 1st 8 leds in red, next 8 in blue"*
+- *"blink 1-4 leds in red with 1 seconds delay, blink rest in yellow with 3 seconds delay"*
+- *"light 1st 6 leds with red, next 4 in yellow, last 6 in red"*
 
 ### How it works
 
