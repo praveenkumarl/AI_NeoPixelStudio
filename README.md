@@ -1,61 +1,118 @@
 # NeoPixel Studio
 
-ESP8266 (NodeMCU ESP-12E) firmware + embedded web UI for WS2812B / NeoPixel
-strips. The board serves the whole interface from flash and streams live
-control over a WebSocket.
+<div align="center">
 
-## Repository layout
+![NeoPixel Studio Banner](watermarked_img_18093062230795869337.png)
 
-| File                    | What it is                                                     |
-|-------------------------|----------------------------------------------------------------|
-| `NeoPixelStudio.ino`    | Firmware: web server, WebSocket link, effect engine, playback  |
-| `web/index.html`        | **Source of truth for the web UI** (single file, no build step)|
-| `ui_embedded.h`         | Auto-generated: the UI as a PROGMEM C string. Do not edit      |
-| `tools/build_embedded_ui.py` | Encodes `web/index.html` → `ui_embedded.h`                |
-| `tools/decode_ui.py`    | Extracts `ui_embedded.h` → `web/index.html` (for recovery)     |
+  <h3>Lightweight ESP8266 Firmware & Embedded Web UI for WS2812B / NeoPixel LED Strips</h3>
 
-After editing `web/index.html`, regenerate the header and reflash:
+  <p align="center">
+    <a href="#key-features">Key Features</a> •
+    <a href="#repository-layout">Repository Layout</a> •
+    <a href="#ai-chat-simple-mode">AI Chat Integration</a> •
+    <a href="#supported-providers">Supported Providers</a> •
+    <a href="#quick-start">Quick Start</a>
+  </p>
 
-```
+  <p align="center">
+    <img src="https://img.shields.io/badge/Platform-ESP8266-blue.svg" alt="Platform">
+    <img src="https://img.shields.io/badge/LEDs-WS2812B%20%2F%20NeoPixel-orange.svg" alt="LED Compatibility">
+    <img src="https://img.shields.io/badge/UI-Embedded%20%2F%20WebSocket-success.svg" alt="UI Type">
+    <img src="https://img.shields.io/badge/AI-BYOK%20Integration-purple.svg" alt="AI Features">
+  </p>
+
+---
+
+</div>
+
+## Key Features
+
+- **Self-Hosted Web UI:** The board serves the entire user interface directly from its onboard flash memory.
+- **Real-Time WebSocket Stream:** Low-latency live control and real-time canvas preview.
+- **AI-Powered Show Assistant:** Describe custom animation patterns in plain English using your favorite LLM provider.
+- **Zero Build-Step Frontend:** Clean, single-file web client architecture for quick updates.
+
+---
+
+## Repository Layout
+
+| File | Description |
+| :--- | :--- |
+| **`NeoPixelStudio.ino`** | Core firmware handling web server, WebSocket links, effect engine, and playback. |
+| **`web/index.html`** | **Source of truth for the web UI** (single file, no build step needed). |
+| **`ui_embedded.h`** | Auto-generated header containing the UI as a `PROGMEM` C string (*do not edit directly*). |
+| **`tools/build_embedded_ui.py`** | Script to encode `web/index.html` → `ui_embedded.h`. |
+| **`tools/decode_ui.py`** | Script to extract `ui_embedded.h` → `web/index.html` for recovery. |
+
+### Updating the UI
+
+After making changes to `web/index.html`, regenerate the C header file and reflash your board:
+
+```bash
 python tools/build_embedded_ui.py
 ```
 
-## AI chat (Simple mode)
+---
 
-The Simple tab has an **Ask the AI** panel: describe the show in plain
-English and the assistant converts it into the app's effect stack, plays it
-on the live preview immediately, and pushes it to the board when connected.
-Each applied plan shows what was built with an **Undo** button.
+## AI Chat (Simple Mode)
 
-Examples:
+The Simple tab includes an integrated **Ask the AI** panel. Simply describe your lighting setup or animation ideas in plain English, and the AI assistant will translate them into the app's effect stack, render a live preview instantly, and push the configuration to the micro-controller.
 
-- "light 1st 8 leds in red, next 8 in blue"
-- "blink 1-4 leds in red with 1 seconds delay, blink rest in yellow with 3 seconds delay"
-- "light 1st 6 leds with red, next 4 in yellow, last 6 in red"
+Each applied plan displays a step-by-step breakdown of what was generated, along with an **Undo** action.
 
-### How it works
+```
+                  ┌───────────────────────────────┐
+                  │   User Prompt (Plain English) │
+                  └──────────────┬────────────────┘
+                                 │
+                                 ▼
+                  ┌───────────────────────────────┐
+                  │    LLM API (Browser / BYOK)   │
+                  └──────────────┬────────────────┘
+                                 │
+                                 ▼
+                  ┌───────────────────────────────┐
+                  │  JSON Plan (Layers & Speed)   │
+                  └──────────────┬────────────────┘
+                                 │
+                  ┌──────────────┴──────────────┐
+                  ▼                             ▼
+       ┌────────────────────┐        ┌────────────────────┐
+       │ Live Canvas Preview│        │ WebSockets to ESP  │
+       └────────────────────┘        └────────────────────┘
+```
 
-- The browser talks **directly** to the provider's chat-completions API
-  (BYOK). The ESP8266 never sees the API key and cannot proxy TLS anyway.
-- The system prompt describes the 16 effects, the layer/blend model and the
-  bpm→seconds maths (blink period = 30/bpm s), so "1 second delay" becomes
-  bpm 30.
-- The reply is a small JSON plan (`layers`, optional `brightness` /
-  `globalSpeed`), converted with the same `mkEffect` / `mkSolid` / `mkPixels`
-  factories the rest of the UI uses. Multiple "pixels" groups merge into one
-  pixel layer because the device protocol carries pixel data for a single
-  layer.
-- Keys and per-provider settings live in `localStorage` (`nps-ai`) only.
+### Example Prompts
 
-### Supported providers
+- *"light 1st 8 leds in red, next 8 in blue"*
+- *"blink 1-4 leds in red with 1 seconds delay, blink rest in yellow with 3 seconds delay"*
+- *"light 1st 6 leds with red, next 4 in yellow, last 6 in red"*
 
-OpenAI, Anthropic (Claude), Google Gemini, **DeepInfra** (default), OpenRouter,
-Groq, Mistral, DeepSeek, xAI (Grok), Together AI, Fireworks, Cerebras,
-Perplexity, Cohere, Hugging Face Router, NVIDIA NIM, Alibaba Qwen, Moonshot
-(Kimi), Zhipu GLM, 01.AI (Yi), Azure OpenAI, Ollama and LM Studio (local, no
-key), plus any custom OpenAI-compatible endpoint. Base URLs are editable and
-"Load" fetches the live model list where the provider offers one.
+### How It Works
 
-Anthropic calls send `anthropic-dangerous-direct-browser-access` so they work
-from a browser; providers that block direct browser calls fail with a clear
-CORS hint in the chat log.
+1. **Direct Browser Execution:** The browser talks **directly** to the provider's chat-completions API using your API key (BYOK). The ESP8266 never touches your key and avoids overhead.
+2. **Deterministic Layer Mapping:** The system prompt defines the 16 builtin effects, layer blending models, and `bpm`-to-seconds conversion math ($period = \frac{30}{bpm} \text{ seconds}$), accurately mapping *"1 second delay"* to `bpm 30`.
+3. **Optimized Layer Merging:** The response is formatted into a lightweight JSON schema (`layers`, optional `brightness` / `globalSpeed`), instantiated via standard `mkEffect` / `mkSolid` / `mkPixels` factories.
+4. **Privacy First:** Keys and provider settings remain isolated in your browser's local storage (`nps-ai`).
+
+---
+
+## Supported Providers
+
+NeoPixel Studio works out-of-the-box with a broad selection of hosted and local LLM options:
+
+| Category | Providers |
+| :--- | :--- |
+| **Cloud Providers** | DeepInfra *(default)*, OpenAI, Anthropic (Claude), Google Gemini, OpenRouter, Groq, Mistral, DeepSeek, xAI (Grok), Together AI, Fireworks, Cerebras, Perplexity, Cohere, Hugging Face Router, NVIDIA NIM, Alibaba Qwen, Moonshot (Kimi), Zhipu GLM, 01.AI (Yi), Azure OpenAI |
+| **Local Models** | Ollama, LM Studio (*No API keys needed*) |
+| **Custom** | Any standard OpenAI-compatible API endpoint |
+
+> **Note:** Base URLs are configurable, and the **Load** button will fetch dynamic model lists for supported endpoints. Anthropic calls send `anthropic-dangerous-direct-browser-access` headers to operate directly inside the browser.
+
+---
+
+## Quick Start
+
+1. **Flash Firmware:** Open `NeoPixelStudio.ino` in Arduino IDE or PlatformIO, install required dependencies, and upload to your ESP8266 board.
+2. **Connect Hardware:** Connect your WS2812B LED strip data pin to the designated GPIO pin.
+3. **Access Interface:** Connect to the Wi-Fi network served by the ESP8266, open your web browser, and start designing effects!
